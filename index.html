@@ -11,9 +11,15 @@
   <style>
     .brand-logo { display: block; max-height: 42px; width: auto; }
     .brand-logo-small { max-height: 32px; }
+    .page-loader { align-items: center; background: #000; display: flex; inset: 0; justify-content: center; position: fixed; transition: opacity .35s ease, visibility .35s ease; z-index: 9999; }
+    .page-loader img { height: auto; max-width: 1080px; width: 68vw; }
+    .page-loader.is-hidden { opacity: 0; visibility: hidden; }
   </style>
 </head>
 <body>
+  <div class="page-loader" role="status" aria-label="Loading Teryzon">
+    <img src="images/Teryzon animated mini logo.gif" alt="">
+  </div>
   <header class="site-header">
     <nav class="nav shell" aria-label="Main navigation">
       <a class="brand" href="#home"><img class="brand-logo" src="images/Horizons logo (1).png" alt="Horizons"></a>
@@ -42,6 +48,11 @@
     toggle.addEventListener('click', () => { const open = menu.classList.toggle('is-open'); toggle.setAttribute('aria-expanded', open); });
     menu.addEventListener('click', () => menu.classList.remove('is-open'));
     document.querySelector('#contact-form').addEventListener('submit', (event) => { event.preventDefault(); event.currentTarget.querySelector('.form-status').textContent = 'Thanks. We will be in touch shortly.'; event.currentTarget.reset(); });
+    const loader = document.querySelector('.page-loader'); const loaderStart = Date.now(); const minimumLoaderTime = 2000;
+    window.addEventListener('load', () => {
+      const remainingTime = Math.max(0, minimumLoaderTime - (Date.now() - loaderStart));
+      setTimeout(() => loader.classList.add('is-hidden'), remainingTime);
+    });
   </script>
 </body>
 </html>
