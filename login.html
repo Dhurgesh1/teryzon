@@ -17,6 +17,8 @@
   .divider { align-items:center; color:var(--muted); display:flex; font-size:.75rem; gap:12px; margin:22px 0 10px; } .divider:before, .divider:after { background:var(--line); content:""; flex:1; height:1px; } .auth-status { color:var(--accent); font-size:.85rem; min-height:1.5em; } .auth-switch, .consent { font-size:.8rem; text-align:center; } .consent { line-height:1.5; margin-top:24px; }
   body { background:radial-gradient(circle at 0 50%,#25110c 0,rgba(0,0,0,0) 38%),radial-gradient(circle at 100% 50%,#25110c 0,rgba(0,0,0,0) 38%),#000 !important; }
   button { border-radius:999px; }
+  .auth-status { background:var(--panel); border:1px solid var(--accent); border-radius:12px; color:var(--ink); margin:16px 0 0; min-height:0; padding:12px 14px; }
+  .auth-status:empty { display:none; }
   </style>
 </head>
 <body>
@@ -33,11 +35,13 @@
       <p class="auth-status" id="auth-status" aria-live="polite"></p>
     </form><p class="auth-switch">Don't have a Teryzon account? <a href="signup.html">Create one</a></p><p class="consent">By continuing, you agree to Teryzon's <a href="terms-of-service.html">Terms of Service</a> and <a href="privacy-policy.html">Privacy Policy</a>.</p></div>
   </div></main>
-  <script>
+  <script type="module">
+    import { isSupabaseConfigured, showAuthError, supabase } from './assets/js/supabase-auth.js';
+
     const loginForm = document.querySelector('#login-form'); const status = document.querySelector('#auth-status'); const password = document.querySelector('#password'); const showPassword = document.querySelector('#show-password');
-  showPassword.addEventListener('click', () => { const visible = password.type === 'text'; password.type = visible ? 'password' : 'text'; showPassword.textContent = visible ? 'Show' : 'Hide'; });
-  loginForm.addEventListener('submit', (event) => { event.preventDefault(); localStorage.setItem('teryzonLoggedIn', 'true'); localStorage.setItem('teryzonUser', loginForm.email.value); window.location.href = 'dashboard.html'; });
-  document.querySelector('#google-login').addEventListener('click', () => { status.textContent = 'Google sign-in will be connected here soon.'; });
+    showPassword.addEventListener('click', () => { const visible = password.type === 'text'; password.type = visible ? 'password' : 'text'; showPassword.textContent = visible ? 'Show' : 'Hide'; });
+    loginForm.addEventListener('submit', async (event) => { event.preventDefault(); status.textContent = 'Signing you in...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email.value.trim(), password: loginForm.password.value }); if (error) { showAuthError(status, error); return; } status.textContent = 'Sign in successful. Opening your dashboard...'; window.location.href = 'dashboard.html'; } catch (error) { showAuthError(status, error); } });
+    document.querySelector('#google-login').addEventListener('click', async () => { status.textContent = 'Connecting to Google...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/dashboard.html` } }); if (error) showAuthError(status, error); } catch (error) { showAuthError(status, error); } });
   </script>
 </body>
 </html>
