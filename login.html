@@ -36,12 +36,12 @@
     </form><p class="auth-switch">Don't have a Teryzon account? <a href="signup.html">Create one</a></p><p class="consent">By continuing, you agree to Teryzon's <a href="terms-of-service.html">Terms of Service</a> and <a href="privacy-policy.html">Privacy Policy</a>.</p></div>
   </div></main>
   <script type="module">
-    import { isSupabaseConfigured, showAuthError, supabase } from './assets/js/supabase-auth.js';
+    import { isSupabaseConfigured, showAuthError, AUTH_CALLBACK_URL, supabase } from './assets/js/supabase-auth.js';
 
     const loginForm = document.querySelector('#login-form'); const status = document.querySelector('#auth-status'); const password = document.querySelector('#password'); const showPassword = document.querySelector('#show-password');
     showPassword.addEventListener('click', () => { const visible = password.type === 'text'; password.type = visible ? 'password' : 'text'; showPassword.textContent = visible ? 'Show' : 'Hide'; });
     loginForm.addEventListener('submit', async (event) => { event.preventDefault(); status.textContent = 'Signing you in...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email.value.trim(), password: loginForm.password.value }); if (error) { showAuthError(status, error); return; } status.textContent = 'Sign in successful. Opening your dashboard...'; window.location.href = 'dashboard.html'; } catch (error) { showAuthError(status, error); } });
-    document.querySelector('#google-login').addEventListener('click', async () => { status.textContent = 'Connecting to Google...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/dashboard.html` } }); if (error) showAuthError(status, error); } catch (error) { showAuthError(status, error); } });
+    document.querySelector('#google-login').addEventListener('click', async () => { status.textContent = 'Connecting to Google...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: AUTH_CALLBACK_URL, queryParams: { prompt: 'select_account' } } }); if (error) showAuthError(status, error); } catch (error) { showAuthError(status, error); } });
   </script>
 </body>
 </html>
