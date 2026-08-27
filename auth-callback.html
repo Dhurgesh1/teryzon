@@ -18,8 +18,63 @@
 <script type="module">
   import './assets/js/theme.js';
   import { showAuthError, supabase, SITE_URL } from './assets/js/supabase-auth.js';
+
+  const WELCOME_EMAIL_URL = 'https://zeryppqymzbqesllxnvk.supabase.co/functions/v1/send-welcome-email';
   const status = document.querySelector('#auth-status');
   const fail = (message) => { status.textContent = message; document.querySelector('h1').textContent = 'Connection failed.'; };
-  try { const code = new URLSearchParams(window.location.search).get('code'); if (code) { const { error } = await supabase.auth.exchangeCodeForSession(code); if (error) throw error; } const { data: { session }, error } = await supabase.auth.getSession(); if (error) throw error; if (!session) { fail('No active session was returned. Please try signing in again.'); } else { status.textContent = 'Sign in successful. Opening your dashboard...'; window.setTimeout(() => { window.location.replace(`${SITE_URL}/dashboard.html`); }, 500); } } catch (error) { showAuthError(status, error); document.querySelector('h1').textContent = 'Connection failed.'; }
+
+  try {
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw error;
+    }
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
+
+    if (!session) {
+      fail('No active session was returned. Please try signing in again.');
+    } else {
+      const user = session.user;
+      const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
+      const shouldSendWelcomeEmail = user && user.user_metadata?.welcome_email_sent !== true;
+
+      if (shouldSendWelcomeEmail) {
+        try {
+          const response = await fetch(WELCOME_EMAIL_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              email: user.email,
+              full_name: fullName
+            })
+          });
+
+          if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Welcome email failed: ${response.status} ${errBody}`);
+          }
+
+          await supabase.auth.updateUser({
+            data: { welcome_email_sent: true }
+          });
+        } catch (welcomeError) {
+          console.error('Welcome email not sent:', welcomeError);
+        }
+      }
+
+      status.textContent = 'Sign in successful. Opening your dashboard...';
+      window.setTimeout(() => {
+        window.location.replace(`${SITE_URL}/dashboard.html`);
+      }, 500);
+    }
+  } catch (error) {
+    showAuthError(status, error);
+    document.querySelector('h1').textContent = 'Connection failed.';
+  }
 </script></body>
 </html>
