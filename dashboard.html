@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png">
+  <script src="assets/js/theme-early.js"></script>
+  <link rel="stylesheet" href="assets/css/theme.css">
   <title>Dashboard | Teryzon</title>
   <style>
     :root {
@@ -1131,6 +1133,7 @@
   </main>
 
   <script type="module">
+    import './assets/js/theme.js';
     import { SITE_URL, supabase } from './assets/js/supabase-auth.js';
 
     const userName = document.querySelector('#user-name');

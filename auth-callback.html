@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#000000">
   <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png">
+  <script src="assets/js/theme-early.js"></script>
+  <link rel="stylesheet" href="assets/css/theme.css">
   <title>Connecting | Teryzon</title>
   <style>
     :root { --black:#000; --ink:#f4eee9; --muted:#a89d96; --accent:#af533b; --line:#30221e; --panel:#0b0807; }
@@ -14,6 +16,7 @@
 </head>
 <body><main class="shell"><a href="index.html"><img src="images/Horizons logo (1).png" alt="Horizons"></a><p class="eyebrow">Secure connection</p><h1>Connecting...</h1><p class="dialog-message" id="auth-status" role="status" aria-live="polite">Completing your sign in.</p></main>
 <script type="module">
+  import './assets/js/theme.js';
   import { showAuthError, supabase, SITE_URL } from './assets/js/supabase-auth.js';
   const status = document.querySelector('#auth-status');
   const fail = (message) => { status.textContent = message; document.querySelector('h1').textContent = 'Connection failed.'; };

@@ -1,0 +1,48 @@
+html[data-theme-preference="light"] { color-scheme: light; }
+html[data-theme-preference="dark"] { color-scheme: dark; }
+
+.theme-control {
+  align-items: center;
+  background: rgba(11, 8, 7, 0.72);
+  border: 1px solid var(--line, #30221e);
+  border-radius: 999px;
+  color: var(--ink, #f4eee9);
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.theme-control label {
+  cursor: pointer;
+  line-height: 1;
+  padding: 3px;
+}
+
+.theme-control input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-control input:checked + span { background: var(--terracotta, #af533b); color: var(--black, #000); }
+.theme-control span { border-radius: 999px; display: block; padding: 6px; transition: background .2s ease, color .2s ease; }
+.theme-control svg { display: block; fill: none; height: 15px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; width: 15px; }
+.theme-control label:focus-within span { outline: 2px solid var(--terracotta, #af533b); outline-offset: 2px; }
+
+html[data-theme="light"] body { --black: #211714; --ink: #211714; --muted: #685d56; --terracotta: #9e4a35; --line: #d8c9c0; --panel: #ffffff; background: #f4eee9 !important; color: #211714 !important; }
+html[data-theme="light"] body .site-header { background: rgba(244, 238, 233, .86); }
+html[data-theme="light"] body .theme-control { background: rgba(255, 255, 255, .76); }
+html[data-theme="light"] body .team-section,
+html[data-theme="light"] body .hero,
+html[data-theme="light"] body .band,
+html[data-theme="light"] body .section,
+html[data-theme="light"] body footer { background: #f4eee9 !important; }
+html[data-theme="light"] body .team-card,
+html[data-theme="light"] body .process-grid article,
+html[data-theme="light"] body .plan { border-color: #cdbeb5; }
+html[data-theme="light"] body input,
+html[data-theme="light"] body textarea,
+html[data-theme="light"] body select { background: #fff; color: #211714; }
+html[data-theme="light"] body .auth-status,
+html[data-theme="light"] body .dialog-message { background: #ffffff !important; color: #211714 !important; }
+html[data-theme="light"] body header { background-color: rgba(244, 238, 233, .86); }
+
+@media (max-width: 760px) {
+  .theme-control { margin: 10px 0; }
+  .nav-links .theme-control { align-self: flex-start; }
+}
