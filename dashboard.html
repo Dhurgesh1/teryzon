@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -7,35 +7,1613 @@
   <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png">
   <title>Dashboard | Teryzon</title>
   <style>
-    :root { --black:#000; --ink:#f4eee9; --muted:#a89d96; --accent:#af533b; --line:#30221e; --panel:#0b0807; }
-    * { box-sizing:border-box; } body { background:radial-gradient(circle at 0 50%,#25110c 0,rgba(0,0,0,0) 38%),radial-gradient(circle at 100% 50%,#25110c 0,rgba(0,0,0,0) 38%),#000;color:var(--ink);font-family:"Trebuchet MS",Arial,sans-serif;line-height:1.6;margin:0;min-height:100vh; }
-    a { color:inherit;text-decoration:none; }.shell { margin:0 auto;max-width:1180px;padding:0 24px; } header { border-bottom:1px solid var(--line);padding:25px 0; }.nav { align-items:center;display:flex;justify-content:space-between; }.brand img { height:auto;max-height:38px;width:auto; } button { border-radius:999px; }.sign-out,.secondary-button,.danger-button { background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;font:inherit;padding:9px 14px; }.danger-button { border-color:#71382e;color:#d9836d; }
-    .eyebrow { color:var(--accent);font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase; } main { padding:70px 0; }.dashboard-heading { align-items:end;display:flex;justify-content:space-between;margin-bottom:46px; }.dashboard-heading h1 { font-size:clamp(3rem,8vw,6.8rem);letter-spacing:-.07em;line-height:.95;margin:16px 0 0; }.dashboard-heading p { color:var(--muted);max-width:300px; }
-    .reading-grid { display:grid;gap:16px;grid-template-columns:repeat(4,1fr); }.reading { background:var(--panel);border-top:1px solid var(--accent);padding:24px; }.reading span { color:var(--muted);display:block;font-size:.76rem;letter-spacing:.12em;text-transform:uppercase; }.reading strong { display:block;font-size:2.8rem;line-height:1;margin:30px 0 8px; }.reading small { color:var(--accent); }
-    .workspace-grid { display:grid;gap:50px;grid-template-columns:1fr 1fr;margin-top:70px; }.profile-panel { border-top:1px solid var(--line);padding-top:30px; }.profile-header { align-items:center;display:flex;gap:20px;margin-bottom:28px; }.avatar { align-items:center;background:#1c120f;border:1px solid var(--accent);border-radius:50%;color:var(--accent);display:flex;height:92px;justify-content:center;width:92px; }.avatar svg { height:48px;width:48px; }.avatar img { border-radius:50%;height:100%;object-fit:cover;width:100%; }.profile-header h2 { margin:0; }.profile-header p { color:var(--muted);margin:4px 0 0; }
-    .profile-form label { color:var(--muted);display:block;font-size:.82rem;margin-bottom:18px; }.profile-form input { background:var(--panel);border:1px solid var(--line);color:var(--ink);font:inherit;margin-top:7px;padding:12px;width:100%; }.profile-actions { display:flex;gap:12px;margin-top:8px; }.profile-actions button { cursor:pointer;font:inherit;padding:11px 16px; }.file-input { font-size:.78rem; }.dialog-message { background:var(--panel);border:1px solid var(--accent);border-radius:12px;color:var(--ink);font-size:.85rem;margin:18px 0 0;padding:12px 14px; }.dialog-message:empty { display:none; }.dashboard-band { border-top:1px solid var(--line);padding-top:30px; }.dashboard-band p { color:var(--muted);max-width:440px; }
-    .profile-panel { display:none; } .workspace-grid { grid-template-columns:1fr; } .profile-trigger { align-items:center;background:transparent;border:1px solid var(--line);color:var(--ink);cursor:pointer;display:flex;gap:10px;padding:6px 12px 6px 6px; } .profile-trigger-avatar { align-items:center;background:#1c120f;border:1px solid var(--accent);border-radius:50%;color:var(--accent);display:flex;height:34px;justify-content:center;width:34px; } .profile-trigger-avatar svg,.profile-trigger-avatar img { height:22px;width:22px; } .profile-trigger-avatar img { border-radius:50%;object-fit:cover; } .profile-dialog { background:var(--panel);border:1px solid var(--accent);border-radius:16px;color:var(--ink);max-width:440px;padding:30px;width:calc(100% - 32px); } .profile-dialog::backdrop { background:rgba(0,0,0,.78); } .dialog-top { align-items:start;display:flex;justify-content:space-between;margin-bottom:24px; } .dialog-close { background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:1.4rem;line-height:1;padding:0; } .dialog-title { margin:0; } .dialog-subtitle { color:var(--muted);font-size:.85rem;margin:5px 0 0; } .dialog-avatar { align-items:center;background:#1c120f;border:1px solid var(--accent);border-radius:50%;color:var(--accent);display:flex;height:96px;justify-content:center;margin:0 auto 22px;width:96px; } .dialog-avatar svg,.dialog-avatar img { height:52px;width:52px; } .dialog-avatar img { border-radius:50%;object-fit:cover; } .dialog-form label { color:var(--muted);display:block;font-size:.82rem;margin-bottom:18px; } .dialog-form input { background:#000;border:1px solid var(--line);color:var(--ink);font:inherit;margin-top:7px;padding:12px;width:100%; } .dialog-actions { display:flex;gap:10px; } .dialog-actions button { cursor:pointer;font:inherit;padding:11px 14px; } .dialog-danger { border-color:#71382e;color:#d9836d;display:block;margin-top:24px; } .dialog-message { background:#000;border:1px solid var(--accent);border-radius:10px;color:var(--ink);font-size:.82rem;margin:16px 0 0;padding:10px 12px; } .dialog-message:empty { display:none; }
-    @media(max-width:760px) { .dashboard-heading { align-items:start;flex-direction:column;gap:20px; }.reading-grid { grid-template-columns:1fr 1fr; }.workspace-grid { gap:40px; } } @media(max-width:480px) { .reading-grid { grid-template-columns:1fr; }.dialog-actions { align-items:stretch;flex-direction:column; } }
+    :root {
+      --black: #000000;
+      --bg: #090807;
+      --panel: #120d0b;
+      --panel-strong: #1b130f;
+      --panel-soft: #1d1512;
+      --ink: #f5eee9;
+      --muted: #b7aa9f;
+      --muted-strong: #dcd0c8;
+      --accent: #af533b;
+      --accent-soft: rgba(175, 83, 59, 0.12);
+      --line: #2d211d;
+      --line-strong: #41322d;
+      --danger: #d77b68;
+      --danger-bg: rgba(146, 62, 53, 0.12);
+      --shadow: 0 24px 52px rgba(0, 0, 0, 0.42);
+      --success: #d1e5d1;
+      --input: #0d0908;
+      --focus: rgba(175, 83, 59, 0.18);
+      --header-height: 78px;
+    }
+
+    body[data-theme="light"] {
+      --bg: #f4efe9;
+      --panel: #f9f5f2;
+      --panel-strong: #f0e9e3;
+      --panel-soft: #f8f2ee;
+      --ink: #1b130f;
+      --muted: #685d56;
+      --muted-strong: #342a26;
+      --accent: #9e4a35;
+      --accent-soft: rgba(158, 74, 53, 0.08);
+      --line: #e7ddd6;
+      --line-strong: #dac7bf;
+      --danger: #a14539;
+      --danger-bg: rgba(164, 72, 62, 0.08);
+      --shadow: 0 20px 44px rgba(55, 38, 31, 0.12);
+      --input: #f7f1ee;
+      --focus: rgba(158, 74, 53, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { color-scheme: dark; }
+    body[data-theme="light"] { color-scheme: light; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(175, 83, 59, 0.12), transparent 30%), var(--bg);
+      color: var(--ink);
+      font-family: "Trebuchet MS", Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    body.profile-open {
+      overflow: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+
+    .shell { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(9, 8, 7, 0.75);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    body[data-theme="light"] header { background: rgba(244, 239, 233, 0.82); }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: var(--header-height);
+      gap: 18px;
+    }
+
+    .brand img {
+      max-height: 38px;
+      width: auto;
+      display: block;
+    }
+
+    .profile-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 6px 12px 6px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.01);
+      color: var(--ink);
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+
+    .profile-trigger:hover,
+    .profile-trigger:focus-visible {
+      border-color: var(--line-strong);
+      background: var(--panel-soft);
+      outline: none;
+    }
+
+    .profile-trigger:active { transform: translateY(1px); }
+
+    .profile-trigger-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--accent);
+      background: var(--panel-strong);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .profile-trigger-avatar svg,
+    .profile-trigger-avatar img {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .profile-trigger-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .profile-trigger-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .profile-trigger-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    main { padding: 64px 0 96px; }
+
+    .dashboard-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 46px;
+    }
+
+    .dashboard-heading h1 {
+      margin: 12px 0 0;
+      font-size: clamp(3rem, 8vw, 6.8rem);
+      line-height: 0.95;
+      letter-spacing: -0.08em;
+    }
+
+    .dashboard-heading p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 360px;
+    }
+
+    .reading-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 8px;
+    }
+
+    .reading {
+      background: rgba(18, 13, 11, 0.88);
+      border-top: 1px solid var(--accent);
+      padding: 24px;
+      min-width: 0;
+    }
+
+    body[data-theme="light"] .reading {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    .reading span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .reading strong {
+      display: block;
+      font-size: clamp(2.3rem, 4vw, 3rem);
+      line-height: 1;
+      margin: 22px 0 8px;
+      letter-spacing: -0.04em;
+    }
+
+    .reading small {
+      color: var(--accent);
+      font-size: 0.8rem;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      margin-top: 72px;
+    }
+
+    .dashboard-band {
+      border-top: 1px solid var(--line);
+      padding-top: 30px;
+    }
+
+    .dashboard-band h2 {
+      margin: 14px 0 0;
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      letter-spacing: -0.06em;
+      line-height: 1.05;
+    }
+
+    .dashboard-band p {
+      color: var(--muted);
+      max-width: 460px;
+      margin: 18px 0 0;
+    }
+
+    .profile-dialog {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      color: var(--ink);
+      width: min(820px, calc(100vw - 28px));
+      max-width: 820px;
+      max-height: min(88vh, 860px);
+      padding: 0;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .profile-dialog[open] {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .profile-dialog:not([open]) {
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+    }
+
+    .profile-dialog::backdrop {
+      background: rgba(6, 5, 4, 0.7);
+      backdrop-filter: blur(4px);
+    }
+
+    .profile-dialog-shell {
+      display: flex;
+      flex-direction: column;
+      max-height: min(88vh, 860px);
+    }
+
+    .profile-dialog-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 22px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .dialog-close {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.5rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s ease, color 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .dialog-close:hover,
+    .dialog-close:focus-visible {
+      border-color: var(--line-strong);
+      color: var(--ink);
+      outline: none;
+    }
+
+    .profile-overview {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .profile-avatar-large {
+      position: relative;
+      flex-shrink: 0;
+      width: 94px;
+      height: 94px;
+      border-radius: 50%;
+      border: 1px solid var(--accent);
+      background: var(--panel-strong);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .profile-avatar-large img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .profile-avatar-large svg {
+      width: 40px;
+      height: 40px;
+      stroke: currentColor;
+    }
+
+    .avatar-change-action {
+      position: absolute;
+      inset: auto 0 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 7px 8px;
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      background: rgba(12, 10, 9, 0.76);
+      color: var(--ink);
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .profile-avatar-large:hover .avatar-change-action,
+    .profile-avatar-large:focus-within .avatar-change-action,
+    .avatar-change-action:focus-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .profile-avatar-large .avatar-change-action svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .profile-heading-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .member-tag {
+      display: inline-flex;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--muted);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .profile-heading-copy h2 {
+      margin: 10px 0 0;
+      font-size: clamp(1.5rem, 2vw, 2rem);
+      line-height: 1.12;
+      letter-spacing: -0.05em;
+    }
+
+    .profile-heading-copy p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .profile-heading-copy a { color: var(--muted-strong); }
+
+    .profile-layout {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .settings-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px 16px 18px 18px;
+      border-right: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.01);
+      overflow-y: auto;
+    }
+
+    .settings-signout {
+      margin-top: auto;
+      color: var(--danger);
+      border-color: rgba(215, 123, 104, 0.3);
+      background: rgba(146, 62, 53, 0.08);
+    }
+
+    .settings-tab {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      font-weight: 700;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .settings-tab:hover,
+    .settings-tab:focus-visible {
+      background: var(--panel-strong);
+      border-color: var(--line);
+      color: var(--ink);
+      outline: none;
+    }
+
+    .settings-tab.is-active {
+      background: var(--accent-soft);
+      border-color: var(--line);
+      color: var(--ink);
+    }
+
+    .settings-content {
+      overflow-y: auto;
+      padding: 18px 18px 14px;
+    }
+
+    .profile-form-footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding-top: 12px;
+      margin-top: 10px;
+      background: linear-gradient(to top, var(--panel), rgba(18, 13, 11, 0));
+      border-top: 1px solid transparent;
+    }
+
+    .settings-section {
+      display: none;
+      gap: 18px;
+      min-height: 100%;
+    }
+
+    .settings-section.is-active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 8px;
+    }
+
+    .section-header h3 {
+      margin: 0;
+      font-size: 1.08rem;
+      letter-spacing: -0.03em;
+    }
+
+    .field-stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      padding: 14px 14px 12px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .field-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .field-text,
+    .field-value {
+      color: var(--ink);
+      font-size: 1rem;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .field-value a {
+      color: var(--ink);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .field-help {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .input,
+    .select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--input);
+      color: var(--ink);
+      padding: 11px 12px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .input:focus,
+    .select:focus,
+    .toggle:focus-visible,
+    .secondary-button:focus-visible,
+    .primary-button:focus-visible,
+    .danger-button:focus-visible,
+    .ghost-button:focus-visible,
+    .settings-tab:focus-visible,
+    .dialog-close:focus-visible,
+    .avatar-change-action:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    .section-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .primary-button,
+    .secondary-button,
+    .danger-button,
+    .ghost-button {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      font-weight: 700;
+      transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .primary-button {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff5f0;
+    }
+
+    .primary-button:hover,
+    .secondary-button:hover,
+    .danger-button:hover,
+    .ghost-button:hover,
+    .primary-button:focus-visible,
+    .secondary-button:focus-visible,
+    .danger-button:focus-visible,
+    .ghost-button:focus-visible {
+      transform: translateY(-1px);
+    }
+
+    .primary-button:disabled,
+    .secondary-button:disabled,
+    .danger-button:disabled,
+    .ghost-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .secondary-button {
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .danger-button {
+      background: var(--danger-bg);
+      border-color: rgba(215, 123, 104, 0.6);
+      color: var(--danger);
+    }
+
+    .ghost-button {
+      background: transparent;
+      border-color: transparent;
+      color: var(--muted);
+    }
+
+    .secondary-button.is-active,
+    .ghost-button.is-active {
+      border-color: var(--line-strong);
+      background: var(--panel-strong);
+      color: var(--ink);
+    }
+
+    .dialog-message {
+      margin: 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.01);
+      color: var(--muted-strong);
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .dialog-message.is-success {
+      border-color: rgba(156, 195, 156, 0.45);
+      background: rgba(116, 156, 112, 0.08);
+      color: var(--success);
+    }
+
+    .dialog-message.is-error {
+      border-color: rgba(215, 123, 104, 0.3);
+      background: rgba(215, 123, 104, 0.08);
+      color: var(--danger);
+    }
+
+    .dialog-message.is-loading {
+      border-color: rgba(175, 83, 59, 0.28);
+      background: rgba(175, 83, 59, 0.08);
+      color: var(--ink);
+    }
+
+    .toggle-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toggle-row:last-child { border-bottom: none; }
+
+    .toggle-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .toggle-copy strong {
+      font-size: 0.96rem;
+      line-height: 1.3;
+    }
+
+    .toggle-copy small {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .toggle {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      padding: 0;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .toggle::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--ink);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .toggle.is-on {
+      background: rgba(175, 83, 59, 0.12);
+      border-color: rgba(175, 83, 59, 0.5);
+    }
+
+    .toggle.is-on::before {
+      background: var(--accent);
+      transform: translateX(18px);
+    }
+
+    .danger-box {
+      display: grid;
+      gap: 12px;
+      padding: 18px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(215, 123, 104, 0.4);
+      background: rgba(146, 62, 53, 0.08);
+    }
+
+    .danger-box h4,
+    .delete-confirmation h4 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: -0.03em;
+    }
+
+    .danger-box p,
+    .delete-confirmation p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .delete-confirmation {
+      display: grid;
+      gap: 14px;
+      padding: 18px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .clear-button {
+      color: var(--muted);
+    }
+
+    @media (max-width: 760px) {
+      .dashboard-heading {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .reading-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .profile-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-nav {
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 12px 12px 10px;
+      }
+
+      .settings-tab {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+
+      .settings-content {
+        padding-top: 14px;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .shell { padding: 0 16px; }
+      .nav { min-height: 70px; }
+      .profile-trigger {
+        padding: 6px 8px 6px 6px;
+      }
+      .profile-trigger-name { display: none; }
+      .profile-trigger-pill { display: none; }
+      .profile-dialog {
+        width: min(100vw - 14px, 100%);
+        max-height: 92vh;
+      }
+
+      .profile-dialog-header {
+        padding: 18px 16px 14px;
+      }
+
+      .profile-overview {
+        gap: 12px;
+      }
+
+      .profile-avatar-large {
+        width: 78px;
+        height: 78px;
+      }
+
+      .settings-content {
+        padding: 14px 14px 18px;
+      }
+
+      .section-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .section-actions > * {
+        width: 100%;
+      }
+
+      .toggle-row {
+        align-items: flex-start;
+      }
+
+      .reading-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <header><div class="shell nav"><a class="brand" href="index.html"><img src="images/Horizons logo (1).png" alt="Horizons"></a><button class="profile-trigger" id="profile-trigger" type="button" aria-haspopup="dialog"><span class="profile-trigger-avatar"><svg id="trigger-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg><img id="trigger-image" alt="" hidden></span><span>Profile</span></button></div></header>
-  <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><div><h2 class="dialog-title" id="dialog-title">Your profile</h2><p class="dialog-subtitle" id="dialog-email">Account settings</p></div><button class="dialog-close" id="dialog-close" type="button" aria-label="Close profile">&times;</button></div><div class="dialog-avatar"><svg id="dialog-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg><img id="dialog-image" alt="Your profile picture" hidden></div><form class="dialog-form" id="dialog-form"><label>Display name<input id="dialog-name" name="name" type="text" autocomplete="name" required></label><label>Profile picture<input id="dialog-file" name="avatar" type="file" accept="image/png,image/jpeg,image/webp"></label><div class="dialog-actions"><button class="button" type="submit">Save changes</button><button class="secondary-button" id="dialog-remove" type="button">Remove picture</button></div><p class="dialog-message" id="dialog-status" role="alert" aria-live="polite"></p></form><button class="secondary-button" id="dialog-sign-out" type="button">Sign out</button><button class="secondary-button dialog-danger" id="dialog-delete" type="button">Delete account</button></dialog>
-  <main><div class="shell">
-    <div class="dashboard-heading"><div><p class="eyebrow">Teryzon dashboard</p><h1>Good ground<br>starts here.</h1></div><p>Live field intelligence for <strong id="user-name">your workspace</strong>.</p></div>
-    <section class="reading-grid" aria-label="Latest soil readings"><article class="reading"><span>Moisture</span><strong>42%</strong><small>Healthy range</small></article><article class="reading"><span>Temperature</span><strong>24.8°C</strong><small>Stable</small></article><article class="reading"><span>pH level</span><strong>6.7</strong><small>Optimal</small></article><article class="reading"><span>Conductivity</span><strong>318</strong><small>µS/cm</small></article></section>
-    <div class="workspace-grid"><section class="dashboard-band"><p class="eyebrow">Workspace status</p><h2>Ready for your first field scan.</h2><p>Connect a Teryzon rover or select a project to begin collecting readings, tracking changes, and building a clearer picture of your soil.</p></section></div>
-  </div></main>
+  <header>
+    <div class="shell nav">
+      <a class="brand" href="index.html" aria-label="Teryzon home">
+        <img src="images/Horizons logo (1).png" alt="Teryzon">
+      </a>
+      <button class="profile-trigger" id="profile-trigger" type="button" aria-haspopup="dialog" aria-controls="profile-dialog" aria-label="Open account profile">
+        <span class="profile-trigger-avatar">
+          <svg id="trigger-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 21a8 8 0 0 1 16 0"></path>
+          </svg>
+          <img id="trigger-image" alt="" hidden>
+        </span>
+        <span class="profile-trigger-name"><span class="profile-trigger-pill">Account</span><span id="profile-trigger-name">Profile</span></span>
+      </button>
+    </div>
+  </header>
+
+  <dialog class="profile-dialog" id="profile-dialog" aria-labelledby="dialog-title">
+    <div class="profile-dialog-shell">
+      <div class="profile-dialog-header">
+        <div class="profile-overview">
+          <div class="profile-avatar-large" aria-label="Current profile image">
+            <svg id="dialog-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"></circle>
+              <path d="M4 21a8 8 0 0 1 16 0"></path>
+            </svg>
+            <img id="dialog-image" alt="Profile photo" hidden>
+            <button class="avatar-change-action" id="avatar-upload-trigger" type="button" aria-label="Change profile photo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 16.5V18.5A1.5 1.5 0 0 0 5.5 20H18.5A1.5 1.5 0 0 0 20 18.5V16.5"></path>
+                <path d="M12 15V4M7.75 8.25L12 4L16.25 8.25"></path>
+              </svg>
+              <span>Change</span>
+            </button>
+          </div>
+
+          <div class="profile-heading-copy">
+            <span class="member-tag">Teryzon member</span>
+            <h2 id="dialog-title">Your profile</h2>
+            <p id="profile-email-inline"><a href="mailto:example@email.com">example@email.com</a></p>
+          </div>
+        </div>
+
+        <button class="dialog-close" id="dialog-close" type="button" aria-label="Close profile dialog">&times;</button>
+      </div>
+
+      <div class="profile-layout">
+        <nav class="settings-nav" aria-label="Account settings pages">
+          <button class="settings-tab is-active" type="button" data-section="profile">Profile</button>
+          <button class="settings-tab" type="button" data-section="preferences">Preferences</button>
+          <button class="settings-tab" type="button" data-section="security">Security</button>
+          <button class="settings-tab" type="button" data-section="danger">Danger Zone</button>
+          <button class="settings-tab settings-signout" id="sidebar-sign-out" type="button">Sign out</button>
+        </nav>
+
+        <div class="settings-content">
+          <section class="settings-section is-active" data-section="profile">
+            <div class="section-header">
+              <h3>Profile</h3>
+            </div>
+
+            <form id="profile-form" novalidate>
+              <div class="field-stack">
+                <div class="field">
+                  <label class="field-label" for="dialog-name">Display name</label>
+                  <input id="dialog-name" class="input" name="name" type="text" autocomplete="name" placeholder="Your display name" aria-label="Display name">
+                  <p class="field-help">This is shown in your dashboard and account center.</p>
+                </div>
+
+                <div class="field">
+                  <span class="field-label">Profile photo</span>
+                  <div class="section-actions">
+                    <button class="secondary-button" id="avatar-change-button" type="button">Change photo</button>
+                    <input id="dialog-file" type="file" accept="image/png,image/jpeg,image/webp" hidden aria-label="Upload a new profile photo">
+                    <button class="ghost-button clear-button" id="dialog-remove" type="button">Remove photo</button>
+                  </div>
+                  <p class="field-help">PNG, JPEG, and WebP up to 2 MB.</p>
+                </div>
+
+                <div class="field">
+                  <span class="field-label">Email</span>
+                  <div class="field-value" id="account-email-value"><a id="account-email-link" href="mailto:example@email.com">example@email.com</a></div>
+                  <p class="field-help">Your login email is managed through your authentication settings.</p>
+                </div>
+
+                <div class="field">
+                  <span class="field-label">Account</span>
+                  <div class="field-text">Active member</div>
+                  <p class="field-help">Signed in securely to your Teryzon account.</p>
+                </div>
+              </div>
+
+              <div class="profile-form-footer">
+                <button class="primary-button" id="save-profile" type="submit" disabled>Save changes</button>
+                <button class="secondary-button" id="cancel-profile" type="button">Cancel</button>
+              </div>
+            </form>
+
+            <p class="dialog-message" id="dialog-status" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="settings-section" data-section="preferences">
+            <div class="section-header">
+              <h3>Preferences</h3>
+            </div>
+
+            <div class="field-stack">
+              <div class="field">
+                <label class="field-label" for="theme-select">Theme</label>
+                <select id="theme-select" class="select" aria-label="Choose theme preference">
+                  <option value="system">System</option>
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+                <p class="field-help">Choose the visual mode that works best for your workspace.</p>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Notifications</span>
+                <div class="toggle-list">
+                  <div class="toggle-row">
+                    <div class="toggle-copy">
+                      <strong>Email notifications</strong>
+                      <small>Receive important product and account updates.</small>
+                    </div>
+                    <button class="toggle" type="button" id="toggle-email-notifications" aria-pressed="false" aria-label="Toggle email notifications"></button>
+                  </div>
+
+                  <div class="toggle-row">
+                    <div class="toggle-copy">
+                      <strong>Product updates</strong>
+                      <small>Get new release notes and product news.</small>
+                    </div>
+                    <button class="toggle" type="button" id="toggle-product-notifications" aria-pressed="false" aria-label="Toggle product updates"></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-section" data-section="security">
+            <div class="section-header">
+              <h3>Security</h3>
+            </div>
+
+            <div class="field-stack">
+              <div class="field">
+                <span class="field-label">Current account email</span>
+                <div class="field-value" id="security-email-value"><a id="security-email-link" href="mailto:example@email.com">example@email.com</a></div>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Authentication status</span>
+                <div class="field-text" id="auth-status-value">Protected session active</div>
+                <p class="field-help">Your account is currently using a secure authenticated session.</p>
+              </div>
+
+              <div class="field">
+                <span class="field-label">Account access</span>
+                <div class="section-actions" style="margin-top: 0;">
+                  <button class="secondary-button" id="dialog-reset-password" type="button">Reset password</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-section" data-section="danger">
+            <div class="section-header">
+              <h3>Danger Zone</h3>
+            </div>
+
+            <div class="danger-box">
+              <h4>Delete your Teryzon account?</h4>
+              <p>This permanently removes your account and cannot be undone.</p>
+              <button class="danger-button" id="dialog-delete" type="button">Delete account</button>
+            </div>
+
+            <div class="delete-confirmation" id="delete-confirmation" hidden>
+              <h4>Delete your Teryzon account?</h4>
+              <p>This permanently removes your account and cannot be undone.</p>
+
+              <div class="field">
+                <label class="field-label" for="delete-confirm-input">Type DELETE to confirm</label>
+                <input id="delete-confirm-input" class="input" type="text" autocomplete="off" spellcheck="false" aria-label="Type DELETE to confirm account deletion" placeholder="DELETE">
+              </div>
+
+              <div class="section-actions">
+                <button class="danger-button" id="confirm-delete-account" type="button" disabled>Delete forever</button>
+                <button class="secondary-button" id="cancel-delete-account" type="button">Cancel</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <main>
+    <div class="shell">
+      <div class="dashboard-heading">
+        <div>
+          <p class="eyebrow">Teryzon dashboard</p>
+          <h1>Good ground<br>starts here.</h1>
+        </div>
+        <p>Live field intelligence for <strong id="user-name">your workspace</strong>.</p>
+      </div>
+
+      <section class="reading-grid" aria-label="Latest soil readings">
+        <article class="reading"><span>Moisture</span><strong>42%</strong><small>Healthy range</small></article>
+        <article class="reading"><span>Temperature</span><strong>24.8°C</strong><small>Stable</small></article>
+        <article class="reading"><span>pH level</span><strong>6.7</strong><small>Optimal</small></article>
+        <article class="reading"><span>Conductivity</span><strong>318</strong><small>µS/cm</small></article>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="dashboard-band">
+          <p class="eyebrow">Workspace status</p>
+          <h2>Ready for your first field scan.</h2>
+          <p>Connect a Teryzon rover or select a project to begin collecting readings, tracking changes, and building a clearer picture of your soil.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
   <script type="module">
-    import { showAuthError, SITE_URL, supabase } from './assets/js/supabase-auth.js';
-    const userName = document.querySelector('#user-name'); let currentUser;
-    try { const { data: { session }, error } = await supabase.auth.getSession(); if (error) throw error; if (!session) window.location.replace('login.html'); else { currentUser = session.user; userName.textContent = currentUser.user_metadata?.full_name || currentUser.email || 'your workspace'; } } catch (error) { window.location.replace('login.html'); }
-    const profileDialog = document.querySelector('#profile-dialog'); const dialogName = document.querySelector('#dialog-name'); const dialogEmail = document.querySelector('#dialog-email'); const dialogFile = document.querySelector('#dialog-file'); const dialogImage = document.querySelector('#dialog-image'); const dialogPlaceholder = document.querySelector('#dialog-placeholder'); const triggerImage = document.querySelector('#trigger-image'); const triggerPlaceholder = document.querySelector('#trigger-placeholder'); const dialogStatus = document.querySelector('#dialog-status');
-    const setDialogMessage = (message) => { dialogStatus.textContent = message; }; const updateDialogAvatar = (url) => { dialogImage.hidden = !url; dialogPlaceholder.hidden = Boolean(url); triggerImage.hidden = !url; triggerPlaceholder.hidden = Boolean(url); if (url) { dialogImage.src = url; triggerImage.src = url; } };
-    document.querySelector('#profile-trigger').addEventListener('click', () => { dialogName.value = currentUser?.user_metadata?.full_name || ''; dialogEmail.textContent = currentUser?.email || ''; updateDialogAvatar(currentUser?.user_metadata?.avatar_url); setDialogMessage(''); profileDialog.showModal(); }); document.querySelector('#dialog-close').addEventListener('click', () => profileDialog.close()); profileDialog.addEventListener('click', (event) => { if (event.target === profileDialog) profileDialog.close(); });
-    dialogFile.addEventListener('change', () => { const file = dialogFile.files[0]; if (!file) return; if (file.size > 2 * 1024 * 1024) { dialogFile.value = ''; setDialogMessage('Profile pictures must be smaller than 2 MB.'); return; } updateDialogAvatar(URL.createObjectURL(file)); setDialogMessage('Picture selected. Save changes to upload it.'); });
-    document.querySelector('#dialog-form').addEventListener('submit', async (event) => { event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'Saving...'; setDialogMessage('Saving your profile...'); try { let avatarUrl = currentUser.user_metadata?.avatar_url || null; const file = dialogFile.files[0]; if (file) { const path = `${currentUser.id}/avatar-${Date.now()}.${file.name.split('.').pop()}`; const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type }); if (uploadError) throw uploadError; avatarUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl; } const { data: updated, error } = await supabase.auth.updateUser({ data: { full_name: dialogName.value.trim(), avatar_url: avatarUrl } }); if (error) throw error; currentUser = updated.user; userName.textContent = dialogName.value.trim() || currentUser.email; dialogEmail.textContent = currentUser.email || ''; updateDialogAvatar(avatarUrl); dialogFile.value = ''; setDialogMessage('Profile updated successfully.'); } catch (error) { showAuthError(dialogStatus, error); } finally { button.disabled = false; button.textContent = 'Save changes'; } });
-    document.querySelector('#dialog-remove').addEventListener('click', async () => { setDialogMessage('Removing your profile picture...'); try { const { data: updated, error } = await supabase.auth.updateUser({ data: { avatar_url: null } }); if (error) throw error; currentUser = updated.user; dialogFile.value = ''; updateDialogAvatar(null); setDialogMessage('Profile picture removed successfully.'); } catch (error) { showAuthError(dialogStatus, error); } }); document.querySelector('#dialog-sign-out').addEventListener('click', async () => { const button = document.querySelector('#dialog-sign-out'); button.disabled = true; button.textContent = 'Signing out...'; setDialogMessage('Signing out securely...'); try { const { error } = await supabase.auth.signOut({ scope: 'local' }); if (error) throw error; profileDialog.close(); window.location.replace(`${SITE_URL}/login.html`); } catch (error) { button.disabled = false; button.textContent = 'Sign out'; showAuthError(dialogStatus, error); } }); document.querySelector('#dialog-delete').addEventListener('click', async () => { if (!window.confirm('Delete your Teryzon account permanently? This cannot be undone.')) return; setDialogMessage('Deleting your account...'); try { const { error } = await supabase.rpc('delete_my_account'); if (error) throw error; await supabase.auth.signOut({ scope: 'local' }); window.location.replace(SITE_URL); } catch (error) { showAuthError(dialogStatus, error); } });
+    import { SITE_URL, supabase } from './assets/js/supabase-auth.js';
+
+    const userName = document.querySelector('#user-name');
+    const profileTrigger = document.querySelector('#profile-trigger');
+    const profileTriggerName = document.querySelector('#profile-trigger-name');
+    const profileDialog = document.querySelector('#profile-dialog');
+    const dialogName = document.querySelector('#dialog-name');
+    const dialogFile = document.querySelector('#dialog-file');
+    const dialogImage = document.querySelector('#dialog-image');
+    const dialogPlaceholder = document.querySelector('#dialog-placeholder');
+    const triggerImage = document.querySelector('#trigger-image');
+    const triggerPlaceholder = document.querySelector('#trigger-placeholder');
+    const dialogStatus = document.querySelector('#dialog-status');
+    const saveProfileButton = document.querySelector('#save-profile');
+    const cancelProfileButton = document.querySelector('#cancel-profile');
+    const accountEmailLink = document.querySelector('#account-email-link');
+    const securityEmailLink = document.querySelector('#security-email-link');
+    const profileEmailInline = document.querySelector('#profile-email-inline');
+
+    const settingsTabs = [...document.querySelectorAll('.settings-tab')];
+    const settingsSections = [...document.querySelectorAll('.settings-section')];
+    const themeSelect = document.querySelector('#theme-select');
+    const toggleEmailNotifications = document.querySelector('#toggle-email-notifications');
+    const toggleProductNotifications = document.querySelector('#toggle-product-notifications');
+    const deleteConfirmation = document.querySelector('#delete-confirmation');
+    const deleteConfirmInput = document.querySelector('#delete-confirm-input');
+    const confirmDeleteButton = document.querySelector('#confirm-delete-account');
+    const authStatusValue = document.querySelector('#auth-status-value');
+    const avatarUploadTrigger = document.querySelector('#avatar-upload-trigger');
+    const avatarChangeButton = document.querySelector('#avatar-change-button');
+
+    let currentUser = null;
+    let lastFocusedElement = null;
+    let pendingObjectUrl = null;
+    let originalName = '';
+    let originalAvatarUrl = null;
+    let hasLocalAvatarSelection = false;
+    let avatarWasRemoved = false;
+
+    const preferenceKeys = {
+      theme: 'teryzon-theme-preference',
+      emailNotifications: 'teryzon-email-notifications',
+      productNotifications: 'teryzon-product-notifications'
+    };
+
+    const setStatus = (message, type = '') => {
+      dialogStatus.textContent = message || '';
+      dialogStatus.className = 'dialog-message';
+      if (type) dialogStatus.classList.add(`is-${type}`);
+    };
+
+    const normalizeDisplayName = (value) => value?.trim() || '';
+
+    const updateAvatarMarkup = (imageUrl) => {
+      const hasImage = Boolean(imageUrl);
+      dialogImage.hidden = !hasImage;
+      dialogPlaceholder.hidden = hasImage;
+      triggerImage.hidden = !hasImage;
+      triggerPlaceholder.hidden = hasImage;
+
+      if (hasImage) {
+        dialogImage.src = imageUrl;
+        triggerImage.src = imageUrl;
+      } else {
+        dialogImage.removeAttribute('src');
+        triggerImage.removeAttribute('src');
+      }
+    };
+
+    const releasePendingObjectUrl = () => {
+      if (pendingObjectUrl && pendingObjectUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(pendingObjectUrl);
+      }
+      pendingObjectUrl = null;
+    };
+
+    const syncUserProfileControls = () => {
+      if (!currentUser) return;
+
+      const fullName = normalizeDisplayName(currentUser.user_metadata?.full_name);
+      const email = currentUser.email || 'No email available';
+      const avatar = currentUser.user_metadata?.avatar_url || null;
+
+      dialogName.value = fullName;
+      originalName = fullName;
+      originalAvatarUrl = avatar;
+      accountEmailLink.textContent = email;
+      accountEmailLink.href = `mailto:${email}`;
+      securityEmailLink.textContent = email;
+      securityEmailLink.href = `mailto:${email}`;
+      profileEmailInline.innerHTML = `<a href="mailto:${email}">${email}</a>`;
+      profileTriggerName.textContent = fullName || 'Profile';
+      userName.textContent = fullName || currentUser.email || 'your workspace';
+      updateAvatarMarkup(avatar);
+      hasLocalAvatarSelection = false;
+      avatarWasRemoved = false;
+      dialogFile.value = '';
+      releasePendingObjectUrl();
+      refreshDirtyState();
+    };
+
+    const refreshDirtyState = () => {
+      const nameChanged = normalizeDisplayName(dialogName.value) !== originalName;
+      const hasUnsavedAvatar = hasLocalAvatarSelection || avatarWasRemoved;
+      const shouldEnable = nameChanged || hasUnsavedAvatar;
+      saveProfileButton.disabled = !shouldEnable || !normalizeDisplayName(dialogName.value);
+      cancelProfileButton.disabled = !shouldEnable;
+    };
+
+    const applyThemePreference = () => {
+      const storedTheme = localStorage.getItem(preferenceKeys.theme) || 'system';
+      const systemIsLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+      const resolvedTheme = storedTheme === 'system' ? (systemIsLight ? 'light' : 'dark') : storedTheme;
+      document.body.setAttribute('data-theme', resolvedTheme);
+      themeSelect.value = storedTheme;
+    };
+
+    const syncToggleButton = (button, enabled) => {
+      button.classList.toggle('is-on', enabled);
+      button.setAttribute('aria-pressed', String(enabled));
+    };
+
+    const applyStoredPreferences = () => {
+      applyThemePreference();
+
+      const emailEnabled = localStorage.getItem(preferenceKeys.emailNotifications) === 'true';
+      const productEnabled = localStorage.getItem(preferenceKeys.productNotifications) === 'true';
+      syncToggleButton(toggleEmailNotifications, emailEnabled);
+      syncToggleButton(toggleProductNotifications, productEnabled);
+    };
+
+    const openSection = (name) => {
+      settingsTabs.forEach((tab) => {
+        tab.classList.toggle('is-active', tab.dataset.section === name);
+      });
+      settingsSections.forEach((section) => {
+        section.classList.toggle('is-active', section.dataset.section === name);
+      });
+    };
+
+    const handleProfileDialogOpen = () => {
+      lastFocusedElement = document.activeElement;
+      if (currentUser) {
+        syncUserProfileControls();
+      }
+      document.body.classList.add('profile-open');
+      setStatus('');
+      profileDialog.showModal();
+      dialogName.focus();
+    };
+
+    const closeProfileDialog = () => {
+      if (profileDialog.open) {
+        profileDialog.close();
+      }
+
+      document.body.classList.remove('profile-open');
+
+      if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+        lastFocusedElement.focus();
+      }
+
+      deleteConfirmation.hidden = true;
+      deleteConfirmInput.value = '';
+      confirmDeleteButton.disabled = true;
+    };
+
+    const signOutCurrentUser = async (button) => {
+      const targetButton = button || document.querySelector('#sidebar-sign-out');
+      if (!targetButton) return;
+
+      targetButton.disabled = true;
+      targetButton.textContent = 'Signing out...';
+      setStatus('Signing out securely…', 'loading');
+
+      try {
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) throw error;
+        closeProfileDialog();
+        window.location.replace(`${SITE_URL}/login.html`);
+      } catch (error) {
+        targetButton.disabled = false;
+        targetButton.textContent = 'Sign out';
+        setStatus('Unable to sign out right now. Please try again.', 'error');
+      }
+    };
+
+    const redirectToLogin = () => {
+      window.location.replace(`${SITE_URL}/login.html`);
+    };
+
+    profileTrigger.addEventListener('click', handleProfileDialogOpen);
+    document.querySelector('#dialog-close').addEventListener('click', closeProfileDialog);
+    const sidebarSignOut = document.querySelector('#sidebar-sign-out');
+    if (sidebarSignOut) {
+      sidebarSignOut.addEventListener('click', () => signOutCurrentUser(sidebarSignOut));
+    }
+
+    const legacySignOutButton = document.querySelector('#dialog-sign-out');
+    if (legacySignOutButton) {
+      legacySignOutButton.addEventListener('click', async () => {
+        const button = legacySignOutButton;
+        button.disabled = true;
+        button.textContent = 'Signing out...';
+        setStatus('Signing out securely…', 'loading');
+
+        try {
+          const { error } = await supabase.auth.signOut({ scope: 'local' });
+          if (error) throw error;
+          closeProfileDialog();
+          redirectToLogin();
+        } catch (error) {
+          button.disabled = false;
+          button.textContent = 'Sign out';
+          setStatus('Unable to sign out right now. Please try again.', 'error');
+        }
+      });
+    }
+
+    profileDialog.addEventListener('click', (event) => {
+      if (event.target === profileDialog) closeProfileDialog();
+    });
+
+    profileDialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      closeProfileDialog();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && profileDialog.open) {
+        closeProfileDialog();
+      }
+    });
+
+    settingsTabs.forEach((tab) => {
+      tab.addEventListener('click', () => openSection(tab.dataset.section));
+    });
+
+    dialogName.addEventListener('input', () => {
+      refreshDirtyState();
+      if (dialogStatus.classList.contains('is-success') || dialogStatus.classList.contains('is-error')) {
+        setStatus('');
+      }
+    });
+
+    const validateSelectedFile = (file) => {
+      if (!file) return true;
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        dialogFile.value = '';
+        setStatus('Please upload a PNG, JPG, or WebP profile photo.', 'error');
+        return false;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        dialogFile.value = '';
+        setStatus('Profile photos must be smaller than 2 MB.', 'error');
+        return false;
+      }
+      return true;
+    };
+
+    const handleNewAvatarSelection = (file) => {
+      if (!file) return;
+      if (!validateSelectedFile(file)) return;
+
+      releasePendingObjectUrl();
+      pendingObjectUrl = URL.createObjectURL(file);
+      updateAvatarMarkup(pendingObjectUrl);
+      hasLocalAvatarSelection = true;
+      avatarWasRemoved = false;
+      refreshDirtyState();
+      setStatus('Photo selected. Save your changes to upload it.', 'loading');
+    };
+
+    dialogFile.addEventListener('change', (event) => {
+      const file = event.target.files?.[0];
+      handleNewAvatarSelection(file);
+    });
+
+    avatarUploadTrigger.addEventListener('click', () => dialogFile.click());
+    avatarChangeButton.addEventListener('click', () => dialogFile.click());
+
+    document.querySelector('#dialog-remove').addEventListener('click', () => {
+      dialogFile.value = '';
+      releasePendingObjectUrl();
+      updateAvatarMarkup(null);
+      hasLocalAvatarSelection = true;
+      avatarWasRemoved = true;
+      refreshDirtyState();
+      setStatus('Photo removed from this draft. Save your changes to update it.', 'loading');
+    });
+
+    cancelProfileButton.addEventListener('click', () => {
+      dialogName.value = originalName;
+      dialogFile.value = '';
+      releasePendingObjectUrl();
+      hasLocalAvatarSelection = false;
+      avatarWasRemoved = false;
+      updateAvatarMarkup(originalAvatarUrl);
+      setStatus('');
+      refreshDirtyState();
+    });
+
+    document.querySelector('#profile-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const trimmedName = normalizeDisplayName(dialogName.value);
+      if (!trimmedName) {
+        setStatus('Please enter a display name before saving.', 'error');
+        dialogName.focus();
+        return;
+      }
+
+      saveProfileButton.disabled = true;
+      cancelProfileButton.disabled = true;
+      setStatus('Saving changes…', 'loading');
+
+      try {
+        let avatarUrl = currentUser.user_metadata?.avatar_url || null;
+        const selectedFile = dialogFile.files?.[0];
+
+        if (avatarWasRemoved && !selectedFile) {
+          avatarUrl = null;
+        }
+
+        if (selectedFile) {
+          if (!validateSelectedFile(selectedFile)) {
+            saveProfileButton.disabled = false;
+            cancelProfileButton.disabled = false;
+            return;
+          }
+
+          const extension = selectedFile.name.split('.').pop() || 'png';
+          const path = `${currentUser.id}/avatar-${Date.now()}.${extension}`;
+          const { error: uploadError } = await supabase.storage.from('avatars').upload(path, selectedFile, {
+            upsert: true,
+            contentType: selectedFile.type
+          });
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path);
+          avatarUrl = publicData?.publicUrl || null;
+        }
+
+        if (!selectedFile && !hasLocalAvatarSelection && currentUser.user_metadata?.avatar_url === null && originalAvatarUrl === null) {
+          avatarUrl = null;
+        }
+
+        if (!selectedFile && hasLocalAvatarSelection && !originalAvatarUrl) {
+          avatarUrl = null;
+        }
+
+        const { data: updated, error } = await supabase.auth.updateUser({
+          data: {
+            full_name: trimmedName,
+            avatar_url: avatarUrl
+          }
+        });
+
+        if (error) throw error;
+
+        currentUser = updated.user;
+        originalName = normalizeDisplayName(updated.user.user_metadata?.full_name);
+        originalAvatarUrl = updated.user.user_metadata?.avatar_url || null;
+        releasePendingObjectUrl();
+        hasLocalAvatarSelection = false;
+        avatarWasRemoved = false;
+        updateAvatarMarkup(originalAvatarUrl);
+        syncUserProfileControls();
+        setStatus('✓ Profile updated successfully.', 'success');
+      } catch (error) {
+        setStatus('Unable to update your profile. Please try again.', 'error');
+      } finally {
+        saveProfileButton.disabled = false;
+        cancelProfileButton.disabled = false;
+        refreshDirtyState();
+      }
+    });
+
+    themeSelect.addEventListener('change', (event) => {
+      const value = event.target.value;
+      localStorage.setItem(preferenceKeys.theme, value);
+      applyThemePreference();
+    });
+
+    const setNotificationToggle = (button, enabled) => {
+      syncToggleButton(button, enabled);
+      const key = button.id === 'toggle-email-notifications' ? preferenceKeys.emailNotifications : preferenceKeys.productNotifications;
+      localStorage.setItem(key, String(enabled));
+    };
+
+    toggleEmailNotifications.addEventListener('click', () => {
+      const nextValue = !toggleEmailNotifications.classList.contains('is-on');
+      setNotificationToggle(toggleEmailNotifications, nextValue);
+    });
+
+    toggleProductNotifications.addEventListener('click', () => {
+      const nextValue = !toggleProductNotifications.classList.contains('is-on');
+      setNotificationToggle(toggleProductNotifications, nextValue);
+    });
+
+    document.querySelector('#dialog-reset-password').addEventListener('click', async () => {
+      const email = currentUser?.email;
+      if (!email) return;
+
+      setStatus('Sending a password reset link…', 'loading');
+
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${SITE_URL}/login.html`
+        });
+        if (error) throw error;
+        setStatus('Password reset instructions were sent to your email.', 'success');
+      } catch (error) {
+        setStatus('Unable to send a password reset email right now.', 'error');
+      }
+    });
+
+    document.querySelector('#dialog-delete').addEventListener('click', () => {
+      deleteConfirmation.hidden = false;
+      deleteConfirmInput.value = '';
+      confirmDeleteButton.disabled = true;
+      deleteConfirmInput.focus();
+    });
+
+    deleteConfirmInput.addEventListener('input', () => {
+      confirmDeleteButton.disabled = deleteConfirmInput.value.trim() !== 'DELETE';
+    });
+
+    document.querySelector('#cancel-delete-account').addEventListener('click', () => {
+      deleteConfirmation.hidden = true;
+      deleteConfirmInput.value = '';
+      confirmDeleteButton.disabled = true;
+    });
+
+    confirmDeleteButton.addEventListener('click', async () => {
+      if (deleteConfirmInput.value.trim() !== 'DELETE') return;
+
+      confirmDeleteButton.disabled = true;
+      confirmDeleteButton.textContent = 'Deleting...';
+      setStatus('Deleting your account…', 'loading');
+
+      try {
+        const { error } = await supabase.rpc('delete_my_account');
+        if (error) throw error;
+        await supabase.auth.signOut({ scope: 'local' });
+        deleteConfirmation.hidden = true;
+        closeProfileDialog();
+        redirectToLogin();
+      } catch (error) {
+        confirmDeleteButton.disabled = false;
+        confirmDeleteButton.textContent = 'Delete forever';
+        setStatus('Unable to delete your account right now. Please try again.', 'error');
+      }
+    });
+
+    const bootstrap = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (!session) {
+          window.location.replace('login.html');
+          return;
+        }
+
+        currentUser = session.user;
+        userName.textContent = currentUser.user_metadata?.full_name || currentUser.email || 'your workspace';
+        syncUserProfileControls();
+        applyStoredPreferences();
+        authStatusValue.textContent = 'Protected session active';
+      } catch (error) {
+        window.location.replace('login.html');
+      }
+    };
+
+    const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+    if (typeof lightMediaQuery.addEventListener === 'function') {
+      lightMediaQuery.addEventListener('change', applyThemePreference);
+    }
+
+    bootstrap();
+    openSection('profile');
   </script>
 </body>
 </html>
