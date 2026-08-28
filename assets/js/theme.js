@@ -46,3 +46,23 @@ if (typeof mediaQuery.addEventListener === 'function') {
     if (getStoredTheme() === 'system') applyTheme('system');
   });
 }
+
+const cleanRoutes = {
+  'accessibility.html': '/accessibility',
+  'contact.html': '/contact',
+  'cookie-policy.html': '/cookie-policy',
+  'dashboard.html': '/dashboard',
+  'download.html': '/download',
+  'forgot-password.html': '/forgot-password',
+  'index.html': '/',
+  'login.html': '/login',
+  'privacy-policy.html': '/privacy-policy',
+  'reset-password.html': '/reset-password',
+  'signup.html': '/signup',
+  'terms-of-service.html': '/terms-of-service'
+};
+
+document.querySelectorAll('a[href]').forEach((link) => {
+  const [path, suffix = ''] = link.getAttribute('href').split(/([?#].*)/, 2);
+  if (cleanRoutes[path]) link.setAttribute('href', `${cleanRoutes[path]}${suffix}`);
+});

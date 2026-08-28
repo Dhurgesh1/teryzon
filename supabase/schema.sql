@@ -29,6 +29,25 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.handle_new_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, full_name)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'))
+  on conflict (id) do update set email = excluded.email;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_profile on auth.users;
+create trigger on_auth_user_created_profile
+  after insert on auth.users
+  for each row execute function public.handle_new_user_profile();
+
 create table if not exists public.support_tickets (
   id uuid primary key default gen_random_uuid(),
   ticket_number text unique not null default ('TER-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('public.support_ticket_sequence')::text, 6, '0')),
