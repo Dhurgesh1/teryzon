@@ -1,3 +1,5 @@
+export {};
+
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_HISTORY = 12;
