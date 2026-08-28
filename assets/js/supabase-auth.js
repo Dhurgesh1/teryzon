@@ -6,8 +6,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export const isSupabaseConfigured = !SUPABASE_URL.includes('YOUR_PROJECT_REF') && !SUPABASE_ANON_KEY.includes('YOUR_SUPABASE');
 const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-export const SITE_URL = isLocalhost ? window.location.origin : 'https://dhurgesh1.github.io/teryzon';
-export const AUTH_CALLBACK_URL = `${SITE_URL}/auth-callback.html`;
+export const SITE_URL = isLocalhost ? window.location.origin : 'https://teryzon.com';
+export const AUTH_CALLBACK_URL = `${SITE_URL}/auth-callback`;
 
 const signInWithOAuth = supabase.auth.signInWithOAuth.bind(supabase.auth);
 supabase.auth.signInWithOAuth = (options) => signInWithOAuth({ ...options, options: { ...options.options, queryParams: { ...options.options?.queryParams, prompt: 'select_account' } } });

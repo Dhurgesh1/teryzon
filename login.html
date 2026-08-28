@@ -24,18 +24,18 @@
   </style>
 </head>
 <body>
-  <header><a href="index.html"><img src="images/Horizons logo (1).png" alt="Horizons"></a></header>
+  <header><a href="/"><img src="images/Horizons logo (1).png" alt="Horizons"></a></header>
   <main><div class="shell">
     <p class="eyebrow">Teryzon connection</p><h1>Welcome back.</h1><p>Sign in to continue your Teryzon journey.</p>
     <div class="auth-panel"><form id="login-form">
       <label>Email address<input name="email" type="email" autocomplete="email" required></label>
       <label class="field">Password<input class="password-input" id="password" name="password" type="password" autocomplete="current-password" required><button class="show-password" id="show-password" type="button">Show</button></label>
-  <div class="form-row"><label class="remember"><input name="remember" type="checkbox"> Remember me</label><a class="forgot" href="forgot-password.html">Forgot password?</a></div>
+  <div class="form-row"><label class="remember"><input name="remember" type="checkbox"> Remember me</label><a class="forgot" href="/forgot-password">Forgot password?</a></div>
   <button class="button" type="submit">Sign in to Teryzon</button>
   <div class="divider"><span>or continue with</span></div>
       <button class="button google-button" id="google-login" type="button"><img class="google-mark" src="images/google-loo-real.png" alt="Google"> Continue with Google</button>
       <p class="auth-status" id="auth-status" aria-live="polite"></p>
-    </form><p class="auth-switch">Don't have a Teryzon account? <a href="signup.html">Create one</a></p><p class="consent">By continuing, you agree to Teryzon's <a href="terms-of-service.html">Terms of Service</a> and <a href="privacy-policy.html">Privacy Policy</a>.</p></div>
+    </form><p class="auth-switch">Don't have a Teryzon account? <a href="/signup">Create one</a></p><p class="consent">By continuing, you agree to Teryzon's <a href="/terms-of-service">Terms of Service</a> and <a href="/privacy-policy">Privacy Policy</a>.</p></div>
   </div></main>
   <script type="module">
     import './assets/js/theme.js';
@@ -43,7 +43,7 @@
 
     const loginForm = document.querySelector('#login-form'); const status = document.querySelector('#auth-status'); const password = document.querySelector('#password'); const showPassword = document.querySelector('#show-password');
     showPassword.addEventListener('click', () => { const visible = password.type === 'text'; password.type = visible ? 'password' : 'text'; showPassword.textContent = visible ? 'Show' : 'Hide'; });
-    loginForm.addEventListener('submit', async (event) => { event.preventDefault(); status.textContent = 'Signing you in...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email.value.trim(), password: loginForm.password.value }); if (error) { showAuthError(status, error); return; } status.textContent = 'Sign in successful. Opening your dashboard...'; window.location.href = 'dashboard.html'; } catch (error) { showAuthError(status, error); } });
+    loginForm.addEventListener('submit', async (event) => { event.preventDefault(); status.textContent = 'Signing you in...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithPassword({ email: loginForm.email.value.trim(), password: loginForm.password.value }); if (error) { showAuthError(status, error); return; } status.textContent = 'Sign in successful. Opening your dashboard...'; window.location.href = '/dashboard'; } catch (error) { showAuthError(status, error); } });
     document.querySelector('#google-login').addEventListener('click', async () => { status.textContent = 'Connecting to Google...'; if (!isSupabaseConfigured) { status.textContent = 'Supabase is not configured. Add your project URL and publishable key first.'; return; } try { const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: AUTH_CALLBACK_URL, queryParams: { prompt: 'select_account' } } }); if (error) showAuthError(status, error); } catch (error) { showAuthError(status, error); } });
   </script>
 </body>

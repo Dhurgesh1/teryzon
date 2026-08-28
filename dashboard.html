@@ -1313,7 +1313,7 @@
         const { error } = await supabase.auth.signOut({ scope: 'local' });
         if (error) throw error;
         closeProfileDialog();
-        window.location.replace(`${SITE_URL}/login.html`);
+        window.location.replace(`${SITE_URL}/login`);
       } catch (error) {
         targetButton.disabled = false;
         targetButton.textContent = 'Sign out';
@@ -1322,7 +1322,7 @@
     };
 
     const redirectToLogin = () => {
-      window.location.replace(`${SITE_URL}/login.html`);
+      window.location.replace(`${SITE_URL}/login`);
     };
 
     profileTrigger.addEventListener('click', handleProfileDialogOpen);
@@ -1543,7 +1543,7 @@
 
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${SITE_URL}/login.html`
+          redirectTo: `${SITE_URL}/login`
         });
         if (error) throw error;
         setStatus('Password reset instructions were sent to your email.', 'success');
@@ -1596,7 +1596,7 @@
         if (error) throw error;
 
         if (!session) {
-          window.location.replace('login.html');
+          window.location.replace('/login');
           return;
         }
 
@@ -1606,7 +1606,7 @@
         applyStoredPreferences();
         authStatusValue.textContent = 'Protected session active';
       } catch (error) {
-        window.location.replace('login.html');
+          window.location.replace('/login');
       }
     };
 

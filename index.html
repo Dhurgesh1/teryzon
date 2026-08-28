@@ -57,7 +57,7 @@
           <label title="Use light theme"><input type="radio" name="theme" value="light" aria-label="Use light theme"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg></span></label>
           <label title="Use dark theme"><input type="radio" name="theme" value="dark" aria-label="Use dark theme"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"></path></svg></span></label>
         </div>
-        <a class="nav-cta connect-link" href="login.html">Connect</a>
+        <a class="nav-cta connect-link" href="/login">Connect</a>
       </div>
     </nav>
   </header>
@@ -65,7 +65,7 @@
     <section class="hero" id="home"><div class="hero-grid shell"><div class="hero-copy">
       <p class="eyebrow"><span></span> Intelligent soil monitoring</p><h1>Know your<br><em>ground</em> better.</h1>
       <p class="hero-text">Teryzon is an intelligent soil-testing rover and environmental monitoring platform that turns live field data into healthier decisions.</p>
-      <div class="hero-actions"><a class="button button-primary connect-link" href="login.html">Connect your Rover!</a><a class="text-link" href="#process">Explore the platform <span aria-hidden="true">&#8595;</span></a></div>
+      <div class="hero-actions"><a class="button button-primary connect-link" href="/login">Connect your Rover!</a><a class="button" href="/download">Download app</a><a class="text-link" href="#process">Explore the platform <span aria-hidden="true">&#8595;</span></a></div>
     </div><div class="route-art" aria-label="A simplified soil sensor dashboard illustration" role="img"><div class="route-label label-top">TERYZON / LIVE SCAN</div><div class="route-label label-bottom">SOIL HEALTH<br><strong>MONITORING</strong></div><div class="route-line route-one"></div><div class="route-line route-two"></div><div class="route-line route-three"></div><span class="route-dot dot-one"></span><span class="route-dot dot-two"></span><span class="route-dot dot-three"></span><div class="route-pin">+</div></div></div><div class="hero-meta shell"><span>01 / 04</span><span class="meta-line"></span><span>Data for healthier ground</span></div></section>
     <section class="section intro" id="about"><div class="shell split"><div><p class="eyebrow"><span></span> Meet Teryzon</p><h2>See what is<br><em>underneath.</em></h2></div><div class="section-copy"><p>Teryzon combines robotics, IoT sensors, data analytics, and AI to make soil health assessment faster, easier, and more accessible wherever people learn, grow, and care for land.</p><div class="stat-row"><div><strong>4</strong><span>live soil readings</span></div><div><strong>24/7</strong><span>field intelligence</span></div><div><strong>AI</strong><span>actionable insights</span></div></div></div></div></section>
     <section class="section team-section" id="team"><div class="shell"><div class="team-heading"><div><p class="eyebrow"><span></span> The people behind Teryzon</p><h2>Small team,<br><em>deep roots.</em></h2></div><p class="team-intro">A multidisciplinary team building practical technology for healthier ground and more curious communities.</p></div><div class="team-grid">
@@ -92,7 +92,7 @@
     toggle.addEventListener('click', () => { const open = menu.classList.toggle('is-open'); toggle.setAttribute('aria-expanded', open); toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); menuIcon.morphTo(open ? xIcon : 'M4 6h16M4 12h16M4 18h16'); });
     menu.addEventListener('click', () => { menu.classList.remove('is-open'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Open menu'); menuIcon.morphTo('M4 6h16M4 12h16M4 18h16'); });
     document.querySelector('#contact-form').addEventListener('submit', (event) => { event.preventDefault(); event.currentTarget.querySelector('.form-status').textContent = 'Thanks. We will be in touch shortly.'; event.currentTarget.reset(); });
-    import('./assets/js/supabase-auth.js').then(({ supabase }) => supabase.auth.getSession().then(({ data: { session } }) => { document.querySelectorAll('.connect-link').forEach((link) => { link.href = session ? 'dashboard.html' : 'login.html'; }); }));
+    import('./assets/js/supabase-auth.js').then(({ supabase }) => supabase.auth.getSession().then(({ data: { session } }) => { document.querySelectorAll('.connect-link').forEach((link) => { link.href = session ? '/dashboard' : '/login'; }); }));
     const loader = document.querySelector('.page-loader'); const loaderStart = Date.now(); const minimumLoaderTime = 2000;
     window.addEventListener('load', () => {
       const remainingTime = Math.max(0, minimumLoaderTime - (Date.now() - loaderStart));

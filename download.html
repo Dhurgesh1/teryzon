@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <title>Download Teryzon App | Teryzon</title>
+  <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png?v=4">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/theme.css">
+  <script src="assets/js/theme-early.js"></script>
+  <style>
+    :root {
+      --panel: rgba(11, 8, 7, 0.92);
+      --panel-alt: rgba(27, 18, 15, 0.9);
+      --glow: rgba(175, 83, 59, 0.3);
+    }
+
+    body { min-height: 100vh; }
+    main { padding: 64px 0 100px; }
+    .download-shell { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .download-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 40px 30px;
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(175, 83, 59, 0.12);
+      position: relative;
+      overflow: hidden;
+    }
+    .download-card::before {
+      content: "";
+      position: absolute;
+      inset: -30% auto auto -10%;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(175, 83, 59, 0.18), transparent 68%);
+      pointer-events: none;
+      animation: pulseGlow 7s ease-in-out infinite alternate;
+    }
+    .eyebrow { color: var(--terracotta); font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); letter-spacing: -.06em; line-height: 1; margin: 12px 0 18px; }
+    .download-copy { color: var(--muted); font-size: 1.04rem; line-height: 1.8; margin-bottom: 32px; max-width: 620px; }
+    .download-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      font-weight: 700;
+      padding: 14px 22px;
+      text-decoration: none;
+      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+    }
+    .button:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
+    .button-primary {
+      background: var(--terracotta);
+      color: #000;
+      box-shadow: 0 10px 28px rgba(175, 83, 59, 0.28);
+    }
+    .button-secondary {
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: transparent;
+    }
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 34px;
+    }
+    .platform-card {
+      background: var(--panel-alt);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 22px 18px;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+      animation: riseIn .6s ease both;
+    }
+    .platform-card:nth-child(2) { animation-delay: .1s; }
+    .platform-card:nth-child(3) { animation-delay: .2s; }
+    .platform-card:nth-child(4) { animation-delay: .3s; }
+    .platform-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(175, 83, 59, 0.8);
+      box-shadow: 0 18px 30px rgba(0,0,0,0.18);
+    }
+    .platform-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      color: var(--terracotta);
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+      border: 1px solid rgba(175, 83, 59, 0.3);
+    }
+    .platform-card h3 {
+      margin: 0 0 6px;
+      font-size: 1.2rem;
+      color: var(--ink);
+    }
+    .platform-card p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: .94rem;
+    }
+    .platform-card .card-link {
+      display: inline-block;
+      color: var(--ink);
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(175, 83, 59, 0.8);
+      padding-bottom: 2px;
+    }
+    .meta-row {
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 30px;
+      font-size: .8rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    @keyframes pulseGlow {
+      0% { transform: scale(0.98); opacity: 0.6; }
+      100% { transform: scale(1.12); opacity: 1; }
+    }
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 980px) {
+      .platform-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .platform-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .download-card { padding: 30px 20px; }
+      .download-actions { flex-direction: column; align-items: stretch; }
+      .button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="download-shell">
+      <div class="download-card">
+        <p class="eyebrow">Download</p>
+        <h1>Teryzon app</h1>
+        <p class="download-copy">
+          Get the Teryzon app and start monitoring soil conditions, tracking field data, and exploring healthier ground decisions from your device.
+        </p>
+
+        <div class="download-actions">
+          <a class="button button-primary" href="https://example.com/teryzon-app.apk" download>Download APK</a>
+          <a class="button button-secondary" href="/">Back to home</a>
+        </div>
+
+        <div class="platform-grid">
+          <a class="platform-card" href="https://example.com/teryzon-windows.zip" download>
+            <div class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                <rect x="3.5" y="4" width="17" height="17" rx="2.2" fill="currentColor" opacity="0.18"></rect>
+                <path d="M7 7.5h10v9H7z" fill="currentColor"></path>
+                <path d="M5.5 7.8h2.2v9.3H5.5zM16.3 7.8h2.2v9.3h-2.2zM7 5.5h10v2.1H7zM7 16.2h10v2.3H7z" fill="#0b0807"></path>
+              </svg>
+            </div>
+            <h3>Windows</h3>
+            <p>Desktop install for reliable field analysis and team workflows.</p>
+            <span class="card-link">Download for Windows</span>
+          </a>
+
+          <a class="platform-card" href="https://example.com/teryzon-linux.tar.gz" download>
+            <div class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                <path d="M12 3.8c-1.7 0-3.1 1.4-3.1 3.1 0 .8.3 1.5.8 2.1l.1.1c.5.5 1.2.8 1.9.8s1.4-.3 1.9-.8l.1-.1c.5-.6.8-1.3.8-2.1 0-1.7-1.4-3.1-3.1-3.1Zm-3.8 9.8c-1 0-1.8.8-1.8 1.8v1.3c0 .5.2.9.5 1.3l3.2 3.2c.7.7 1.7 1 2.7 1s2-.3 2.7-1l3.2-3.2c.3-.4.5-.8.5-1.3v-1.3c0-1-.8-1.8-1.8-1.8H8.2Zm-2.2 2.7h.9v1.2H6v-1.2Zm13.6 0h.9v1.2h-.9v-1.2Zm-4.1-9.7c.8.1 1.5.7 1.5 1.6 0 .8-.6 1.5-1.4 1.6l-.9.1c-.8 0-1.5-.7-1.5-1.5 0-.8.7-1.5 1.5-1.5h.8Z" fill="currentColor"></path>
+                <path d="M10.2 12.7c-.6.1-1.1.6-1.1 1.2v1.5l1.7-1.7c.2-.2.5-.3.8-.3h.2c.2 0 .3 0 .5.1-.5-.3-1.1-.5-1.8-.5h-.3Zm3.7 0c.6.1 1.1.6 1.1 1.2v1.5l-1.7-1.7c-.2-.2-.5-.3-.8-.3h-.2c-.2 0-.3 0-.5.1.5-.3 1.1-.5 1.8-.5h.3Z" fill="#0b0807" opacity="0.9"></path>
+              </svg>
+            </div>
+            <h3>Linux</h3>
+            <p>Optimized for developers, labs, and lightweight field deployment.</p>
+            <span class="card-link">Download for Linux</span>
+          </a>
+
+          <a class="platform-card" href="https://example.com/teryzon-app.apk" download>
+            <div class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                <path d="M12 2.8c1.2 0 2.2 1 2.2 2.2v.7h1.2a3.2 3.2 0 0 1 3.2 3.2v1.1c0 1.5-.7 2.8-2 3.6l-.4.3.4.3a3.7 3.7 0 0 1 2 3.4V17a3.2 3.2 0 0 1-3.2 3.2H9.2A3.2 3.2 0 0 1 6 17v-.5c0-1.5.8-2.8 2-3.4l.4-.3-.4-.3a3.8 3.8 0 0 1-2-3.6V8.9A3.2 3.2 0 0 1 9.2 5.7h1.2v-.7c0-1.2 1-2.2 2.2-2.2Zm-1.4 6.4h2.8a2 2 0 0 1 2 2v1.9a2 2 0 0 1-2 2h-2.8a2 2 0 0 1-2-2v-1.9a2 2 0 0 1 2-2Zm2.4-3.9c-.6 0-1 .5-1 1.1v.9h2.1v-.9c0-.6-.5-1.1-1.1-1.1Zm-2.1 8.6h2.8v1.2h-2.8v-1.2Zm.7-4.7h1.4v1.2h-1.4v-1.2Z" fill="currentColor"></path>
+                <circle cx="9.5" cy="9.8" r=".7" fill="#0b0807"></circle>
+                <circle cx="14.5" cy="9.8" r=".7" fill="#0b0807"></circle>
+                <path d="M10.3 12.5c.6.6 1.2.9 1.7.9.5 0 1.1-.3 1.7-.9" stroke="#0b0807" stroke-width="1.2" stroke-linecap="round" fill="none"></path>
+              </svg>
+            </div>
+            <h3>Android</h3>
+            <p>Portable field access for on-site monitoring and fast decision making.</p>
+            <span class="card-link">Download for Android</span>
+          </a>
+
+          <a class="platform-card" href="https://example.com/teryzon-macos.dmg" download>
+            <div class="platform-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                <path d="M13.5 3.5c-.8.2-1.5.9-1.9 1.8-.3.8-.3 1.6-.1 2.3.1.5.4 1.1.7 1.5l.3.4c.5.7 1.2 1 2 1.3.9.3 1.9.2 2.7-.2.8-.4 1.4-1.1 1.7-2 .3-.8.4-1.7.2-2.5-.2-.9-.8-1.7-1.6-2.1-.8-.4-1.6-.4-2.4-.2-.2.1-.4.2-.6.3Z" fill="currentColor" opacity="0.92"></path>
+                <path d="M15.9 9.1c-1.5.4-2.7 1.6-3.1 3.1-.4 1.4-.1 3 .9 4.2.9 1.1 2.3 1.7 3.7 1.7 1.4 0 2.8-.6 3.7-1.7.9-1.2 1.2-2.8.9-4.2-.4-1.5-1.6-2.7-3.1-3.1-.7-.2-1.5-.2-2.1 0Z" fill="currentColor"></path>
+                <path d="M7.5 4.7c.4-.9 1.3-1.6 2.3-1.8.9-.2 1.8-.2 2.7.1-1.8 1.1-2.6 3.2-2.2 5.2-.9.3-1.9.3-2.8-.2-.9-.5-1.5-1.4-1.7-2.4-.2-1 .3-2 .7-2.9Zm2.8 13.5A3.8 3.8 0 0 1 6.5 14c0-1.6.9-3 2.3-3.7.4-.2.9-.4 1.4-.5.3-.1.7-.1 1-.1l.3.1a3.4 3.4 0 0 1 1.5 2.3c.1.7.1 1.4-.1 2.1-.2.8-.7 1.5-1.4 2-.6.5-1.4.8-2.2.8Z" fill="currentColor" opacity="0.9"></path>
+              </svg>
+            </div>
+            <h3>macOS</h3>
+            <p>Built for Mac users who want clean, portable AI soil insights.</p>
+            <span class="card-link">Download for macOS</span>
+          </a>
+        </div>
+
+        <div class="meta-row">
+          <span>Multi-platform</span>
+          <span>Field-ready app</span>
+          <span>Updated 2026</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
