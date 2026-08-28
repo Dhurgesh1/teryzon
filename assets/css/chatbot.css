@@ -15,3 +15,13 @@
 @keyframes teryzonChatTyping { 0%,60%,100% { opacity:.25; transform:translateY(0); } 30% { opacity:1; transform:translateY(-3px); } }
 @media (max-width:560px) { .teryzon-chatbot-launcher { bottom:max(18px,env(safe-area-inset-bottom)); right:max(18px,env(safe-area-inset-right)); }.teryzon-chatbot-panel { border-radius:0; bottom:0; height:100dvh; max-height:100dvh; right:0; width:100vw; }.teryzon-chatbot-panel.is-open ~ * { overflow:hidden; } }
 @media (prefers-reduced-motion:reduce) { .teryzon-chatbot-launcher,.teryzon-chatbot-panel { transition:none; } .teryzon-chatbot-typing span { animation:none; } }
+html[data-theme="light"] .teryzon-chatbot-panel { --teryzon-chat-panel:#fff; --teryzon-chat-ink:#211714; --teryzon-chat-muted:#685d56; --teryzon-chat-line:#d8c9c0; box-shadow:0 24px 70px rgba(33,23,20,.18); }
+html[data-theme="light"] .teryzon-chatbot-bubble { background:#f4eee9; }
+html[data-theme="light"] .teryzon-chatbot-message.is-user .teryzon-chatbot-bubble { background:#9e4a35; color:#fff; }
+html[data-theme="light"] .teryzon-chatbot-input { background:#fff; color:#211714; }
+html[data-theme="light"] .teryzon-chatbot-bubble pre { background:#211714; }
+html[data-theme="light"] .contact-page { background:#f4eee9; color:#211714; }
+html[data-theme="light"] .support-form { background:#fff; border-color:#d8c9c0; }
+html[data-theme="light"] .support-form input,html[data-theme="light"] .support-form select,html[data-theme="light"] .support-form textarea { background:#fff; border-color:#d8c9c0; color:#211714; }
+html[data-theme="light"] .contact-option,html[data-theme="light"] .contact-options,html[data-theme="light"] .support-form hr { border-color:#d8c9c0; }
+html[data-theme="light"] .contact-page .intro,html[data-theme="light"] .contact-option span,html[data-theme="light"] .support-form .muted,html[data-theme="light"] .form-status { color:#685d56; }
