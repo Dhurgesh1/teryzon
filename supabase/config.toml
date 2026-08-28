@@ -1,0 +1,2 @@
+[functions.teryzon-chat]
+verify_jwt = false
