@@ -207,6 +207,16 @@
       max-width: 360px;
     }
 
+    .announcement-banner { align-items: center; background: rgba(8, 7, 6, 0.86); backdrop-filter: blur(8px); display: none; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 9999; }
+    .announcement-banner.is-visible { display: flex; }
+    .announcement-banner-inner { background: linear-gradient(180deg, rgba(23, 17, 15, 0.98), rgba(12, 10, 9, 0.98)); border: 1px solid rgba(175, 83, 59, 0.45); border-radius: 30px; box-shadow: 0 32px 80px rgba(0,0,0,0.52); max-width: 760px; padding: 34px 52px 28px 28px; position: relative; width: min(100%, 760px); }
+    .announcement-banner-label { background: rgba(175, 83, 59, 0.14); border: 1px solid rgba(175, 83, 59, 0.38); border-radius: 999px; color: var(--accent); display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .12em; margin-bottom: 18px; padding: 7px 12px; text-transform: uppercase; }
+    .announcement-banner-copy { color: var(--ink); font-size: clamp(1.08rem, 2vw, 1.38rem); line-height: 1.7; margin: 0; }
+    .announcement-banner-copy strong { color: #f4d9d1; display: block; font-size: clamp(2.2rem, 5vw, 3.3rem); letter-spacing: -0.06em; line-height: 1.05; margin-bottom: 12px; }
+    .announcement-dismiss { appearance: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; color: var(--ink); cursor: pointer; font-size: 1.2rem; height: 42px; position: absolute; right: 18px; top: 18px; width: 42px; }
+    .announcement-dismiss:hover { background: rgba(255,255,255,0.08); }
+    @media (max-width: 640px) { .announcement-banner-inner { padding: 28px 22px 22px; } .announcement-banner-copy { font-size: 1rem; } .announcement-banner-copy strong { font-size: 2rem; } }
+
     .reading-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -909,6 +919,13 @@
   <script src="/assets/js/chatbot.js" defer></script>
 </head>
 <body>
+  <div class="announcement-banner" id="announcement-banner" role="alert" aria-live="assertive" hidden>
+    <div class="announcement-banner-inner">
+      <button class="announcement-dismiss" id="announcement-dismiss" type="button" aria-label="Dismiss announcement">&times;</button>
+      <span class="announcement-banner-label" id="announcement-type">Announcement</span>
+      <p class="announcement-banner-copy" id="announcement-copy">Loading update…</p>
+    </div>
+  </div>
   <header>
     <div class="shell nav">
       <a class="brand" href="index.html" aria-label="Teryzon home">
@@ -1592,6 +1609,67 @@
       }
     });
 
+    const announcementBanner = document.querySelector('#announcement-banner');
+    const announcementType = document.querySelector('#announcement-type');
+    const announcementCopy = document.querySelector('#announcement-copy');
+    const announcementDismiss = document.querySelector('#announcement-dismiss');
+    const dismissedAnnouncementsKey = 'teryzon-dismissed-announcements';
+
+    const getDismissedAnnouncements = () => {
+      try {
+        return JSON.parse(localStorage.getItem(dismissedAnnouncementsKey) || '[]');
+      } catch {
+        return [];
+      }
+    };
+
+    const setDismissedAnnouncement = (id) => {
+      if (!id) return;
+      const dismissed = getDismissedAnnouncements();
+      if (!dismissed.includes(id)) {
+        dismissed.push(id);
+        localStorage.setItem(dismissedAnnouncementsKey, JSON.stringify(dismissed));
+      }
+    };
+
+    const resolveVisibleAnnouncement = (items) => {
+      const dismissed = getDismissedAnnouncements();
+      const next = items.find((item) => !dismissed.includes(item.id));
+      return next || null;
+    };
+
+    const renderAnnouncement = (announcement) => {
+      const type = announcement.type || 'Announcement';
+      announcementType.textContent = type;
+      announcementCopy.innerHTML = `<strong>${(announcement.title || 'Teryzon update').replace(/</g, '&lt;')}</strong>${String(announcement.content || '').replace(/</g, '&lt;')}`;
+      announcementBanner.hidden = false;
+      announcementBanner.classList.add('is-visible');
+      announcementDismiss.onclick = () => {
+        setDismissedAnnouncement(announcement.id);
+        announcementBanner.classList.remove('is-visible');
+        announcementBanner.hidden = true;
+      };
+    };
+
+    const loadAnnouncements = async () => {
+      try {
+        const { data, error } = await supabase.from('announcements').select('*').eq('status', 'Published').order('created_at', { ascending: false });
+        if (error) return;
+
+        const now = Date.now();
+        const activeAnnouncements = (data || []).filter((item) => {
+          const publishAt = item.publish_at ? new Date(item.publish_at).getTime() : null;
+          const expiresAt = item.expires_at ? new Date(item.expires_at).getTime() : null;
+          return (!publishAt || publishAt <= now) && (!expiresAt || expiresAt > now);
+        });
+
+        const announcement = resolveVisibleAnnouncement(activeAnnouncements);
+        if (announcement) renderAnnouncement(announcement);
+      } catch (error) {
+        console.warn('Unable to load announcements', error);
+      }
+    };
+
     const bootstrap = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -1607,6 +1685,7 @@
         syncUserProfileControls();
         applyStoredPreferences();
         authStatusValue.textContent = 'Protected session active';
+        loadAnnouncements();
       } catch (error) {
           window.location.replace('/login');
       }
