@@ -215,6 +215,13 @@
     .announcement-banner-copy strong { color: #f4d9d1; display: block; font-size: clamp(2.2rem, 5vw, 3.3rem); letter-spacing: -0.06em; line-height: 1.05; margin-bottom: 12px; }
     .announcement-dismiss { appearance: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; color: var(--ink); cursor: pointer; font-size: 1.2rem; height: 42px; position: absolute; right: 18px; top: 18px; width: 42px; }
     .announcement-dismiss:hover { background: rgba(255,255,255,0.08); }
+    body[data-theme="light"] .announcement-banner { background: rgba(244, 239, 233, 0.76); }
+    body[data-theme="light"] .announcement-banner-inner { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,242,238,0.98)); border-color: rgba(158, 74, 53, 0.28); box-shadow: 0 24px 64px rgba(55, 38, 31, 0.14); }
+    body[data-theme="light"] .announcement-banner-label { background: rgba(158, 74, 53, 0.1); border-color: rgba(158, 74, 53, 0.2); color: #9e4a35; }
+    body[data-theme="light"] .announcement-banner-copy { color: #1b130f; }
+    body[data-theme="light"] .announcement-banner-copy strong { color: #2a1c17; }
+    body[data-theme="light"] .announcement-dismiss { background: rgba(27, 19, 15, 0.04); border-color: rgba(27, 19, 15, 0.08); color: #1b130f; }
+    body[data-theme="light"] .announcement-dismiss:hover { background: rgba(27, 19, 15, 0.08); }
     @media (max-width: 640px) { .announcement-banner-inner { padding: 28px 22px 22px; } .announcement-banner-copy { font-size: 1rem; } .announcement-banner-copy strong { font-size: 2rem; } }
 
     .reading-grid {
