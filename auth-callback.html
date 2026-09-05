@@ -1,82 +1,438 @@
 <!doctype html>
+
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#000000">
+
   <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png">
+
   <script src="assets/js/theme-early.js"></script>
+
   <link rel="stylesheet" href="assets/css/theme.css">
+
   <title>Connecting | Teryzon</title>
+
   <style>
-    :root { --black:#000; --ink:#f4eee9; --muted:#a89d96; --accent:#af533b; --line:#30221e; --panel:#0b0807; }
-    * { box-sizing:border-box; } body { align-items:center; background:radial-gradient(circle at 0 50%,#25110c 0,rgba(0,0,0,0) 38%),radial-gradient(circle at 100% 50%,#25110c 0,rgba(0,0,0,0) 38%),#000; color:var(--ink); display:flex; font-family:"Trebuchet MS",Arial,sans-serif; justify-content:center; margin:0; min-height:100vh; text-align:center; }
-    .shell { max-width:480px; padding:24px; width:100%; } img { height:auto; max-width:230px; width:58vw; } .eyebrow { color:var(--accent); font-size:.72rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; } h1 { font-size:clamp(2.5rem,8vw,5rem); letter-spacing:-.06em; line-height:1; margin:18px 0; } p { color:var(--muted); } .dialog-message { background:var(--panel); border:1px solid var(--accent); border-radius:12px; color:var(--ink); margin-top:24px; padding:13px 15px; }
+    :root {
+      --black:#000;
+      --ink:#f4eee9;
+      --muted:#a89d96;
+      --accent:#af533b;
+      --line:#30221e;
+      --panel:#0b0807;
+    }
+
+    * {
+      box-sizing:border-box;
+    }
+
+    body {
+      align-items:center;
+      background:
+        radial-gradient(circle at 0 50%,#25110c 0,rgba(0,0,0,0) 38%),
+        radial-gradient(circle at 100% 50%,#25110c 0,rgba(0,0,0,0) 38%),
+        #000;
+      color:var(--ink);
+      display:flex;
+      font-family:"Trebuchet MS",Arial,sans-serif;
+      justify-content:center;
+      margin:0;
+      min-height:100vh;
+      text-align:center;
+    }
+
+    .shell {
+      max-width:480px;
+      padding:24px;
+      width:100%;
+    }
+
+    img {
+      height:auto;
+      max-width:230px;
+      width:58vw;
+    }
+
+    .eyebrow {
+      color:var(--accent);
+      font-size:.72rem;
+      font-weight:700;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+    }
+
+    h1 {
+      font-size:clamp(2.5rem,8vw,5rem);
+      letter-spacing:-.06em;
+      line-height:1;
+      margin:18px 0;
+    }
+
+    p {
+      color:var(--muted);
+    }
+
+    .dialog-message {
+      background:var(--panel);
+      border:1px solid var(--accent);
+      border-radius:12px;
+      color:var(--ink);
+      margin-top:24px;
+      padding:13px 15px;
+    }
   </style>
+
   <link rel="stylesheet" href="/assets/css/chatbot.css">
   <script src="/assets/js/chatbot.js" defer></script>
 </head>
-<body><main class="shell"><a href="index.html"><img src="images/Horizons logo (1).png" alt="Horizons"></a><p class="eyebrow">Secure connection</p><h1>Connecting...</h1><p class="dialog-message" id="auth-status" role="status" aria-live="polite">Completing your sign in.</p></main>
-<script type="module">
-  import './assets/js/theme.js';
-  import { showAuthError, supabase, SITE_URL } from './assets/js/supabase-auth.js';
 
-  const WELCOME_EMAIL_URL = 'https://zeryppqymzbqesllxnvk.supabase.co/functions/v1/send-welcome-email';
-  const status = document.querySelector('#auth-status');
-  const fail = (message) => { status.textContent = message; document.querySelector('h1').textContent = 'Connection failed.'; };
+<body>
 
-  try {
-    const code = new URLSearchParams(window.location.search).get('code');
-    if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
-    }
+  <main class="shell">
 
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
+```
+<a href="index.html">
+  <img
+    src="images/Horizons logo (1).png"
+    alt="Horizons"
+  >
+</a>
 
-    if (!session) {
-      fail('No active session was returned. Please try signing in again.');
-    } else {
-      const user = session.user;
-      const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
-      const shouldSendWelcomeEmail = user && user.user_metadata?.welcome_email_sent !== true;
+<p class="eyebrow">Secure connection</p>
 
-      if (shouldSendWelcomeEmail) {
-        try {
-          const response = await fetch(WELCOME_EMAIL_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({
-              email: user.email,
-              full_name: fullName
-            })
-          });
+<h1>Connecting...</h1>
 
-          if (!response.ok) {
-            const errBody = await response.text();
-            throw new Error(`Welcome email failed: ${response.status} ${errBody}`);
-          }
+<p
+  class="dialog-message"
+  id="auth-status"
+  role="status"
+  aria-live="polite"
+>
+  Completing your sign in.
+</p>
+```
 
-          await supabase.auth.updateUser({
-            data: { welcome_email_sent: true }
-          });
-        } catch (welcomeError) {
-          console.error('Welcome email not sent:', welcomeError);
+  </main>
+
+  <script type="module">
+
+    import './assets/js/theme.js';
+
+    import {
+      showAuthError,
+      supabase,
+      SITE_URL
+    } from './assets/js/supabase-auth.js';
+
+
+    // ============================================================
+    // CONFIGURATION
+    // ============================================================
+
+    const WELCOME_EMAIL_URL =
+      'https://zeryppqymzbqesllxnvk.supabase.co/functions/v1/send-welcome-email';
+
+
+    const status = document.querySelector('#auth-status');
+
+    const heading = document.querySelector('h1');
+
+
+    // ============================================================
+    // ERROR HANDLING
+    // ============================================================
+
+    const fail = (message) => {
+
+      status.textContent = message;
+
+      heading.textContent =
+        'Connection failed.';
+
+    };
+
+
+    // ============================================================
+    // MAIN AUTHENTICATION FLOW
+    // ============================================================
+
+    try {
+
+      /*
+        STEP 1
+        Check whether Supabase redirected here with an
+        authorization code.
+      */
+
+      const code =
+        new URLSearchParams(
+          window.location.search
+        ).get('code');
+
+
+      /*
+        STEP 2
+        Exchange the authorization code for a user session.
+      */
+
+      if (code) {
+
+        const {
+          error
+        } = await supabase.auth.exchangeCodeForSession(code);
+
+
+        if (error) {
+          throw error;
         }
+
       }
 
-      status.textContent = 'Sign in successful. Opening your dashboard...';
+
+      /*
+        STEP 3
+        Get the currently authenticated session.
+      */
+
+      const {
+
+        data: {
+          session
+        },
+
+        error
+
+      } = await supabase.auth.getSession();
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      /*
+        No session was created.
+      */
+
+      if (!session) {
+
+        fail(
+          'No active session was returned. Please try signing in again.'
+        );
+
+        throw new Error(
+          'No active authentication session.'
+        );
+
+      }
+
+
+      // ============================================================
+      // USER INFORMATION
+      // ============================================================
+
+      const user = session.user;
+
+
+      const fullName =
+
+        user?.user_metadata?.full_name ||
+
+        user?.email?.split('@')[0] ||
+
+        'there';
+
+
+      /*
+        This flag is stored directly in the existing
+        Supabase Auth user's user_metadata.
+
+        No additional table is required.
+      */
+
+      const welcomeEmailSent =
+
+        user?.user_metadata?.welcome_email_sent === true;
+
+
+      // ============================================================
+      // SEND WELCOME EMAIL
+      // ============================================================
+
+      /*
+        Only send the welcome email if this user has not
+        previously received one.
+      */
+
+      if (!welcomeEmailSent) {
+
+        status.textContent =
+          'Welcome to Teryzon! Preparing your account...';
+
+
+        try {
+
+          const response =
+            await fetch(
+
+              WELCOME_EMAIL_URL,
+
+              {
+
+                method: 'POST',
+
+                headers: {
+
+                  'Content-Type':
+                    'application/json',
+
+                  'Authorization':
+                    `Bearer ${session.access_token}`
+
+                },
+
+
+                body:
+
+                  JSON.stringify({
+
+                    email:
+                      user.email,
+
+                    full_name:
+                      fullName
+
+                  })
+
+              }
+
+            );
+
+
+          /*
+            Stop the welcome-email process if the
+            Edge Function returned an error.
+          */
+
+          if (!response.ok) {
+
+            const errorText =
+              await response.text();
+
+
+            throw new Error(
+
+              `Welcome email failed: ${response.status} ${errorText}`
+
+            );
+
+          }
+
+
+          /*
+            Mark the email as sent.
+
+            This prevents the same account from receiving
+            another welcome email on future logins.
+          */
+
+          const {
+            error: updateError
+          } = await supabase.auth.updateUser({
+
+            data: {
+
+              welcome_email_sent:
+                true
+
+            }
+
+          });
+
+
+          if (updateError) {
+
+            console.error(
+
+              'Welcome email was sent, but the user metadata could not be updated:',
+
+              updateError
+
+            );
+
+          } else {
+
+            console.log(
+
+              'Welcome email sent successfully.'
+
+            );
+
+          }
+
+
+        } catch (welcomeError) {
+
+          /*
+            The user should still be able to enter Teryzon
+            even if the welcome email temporarily fails.
+          */
+
+          console.error(
+
+            'Welcome email not sent:',
+
+            welcomeError
+
+          );
+
+        }
+
+      }
+
+
+      // ============================================================
+      // REDIRECT TO DASHBOARD
+      // ============================================================
+
+      status.textContent =
+        'Sign in successful. Opening your dashboard...';
+
+
       window.setTimeout(() => {
-        window.location.replace(`${SITE_URL}/dashboard`);
+
+        window.location.replace(
+
+          `${SITE_URL}/dashboard`
+
+        );
+
       }, 500);
+
+
+    } catch (error) {
+
+
+      console.error(
+        'Authentication error:',
+        error
+      );
+
+
+      showAuthError(
+        status,
+        error
+      );
+
+
+      heading.textContent =
+        'Connection failed.';
+
     }
-  } catch (error) {
-    showAuthError(status, error);
-    document.querySelector('h1').textContent = 'Connection failed.';
-  }
-</script></body>
+
+  </script>
+
+</body>
 </html>
