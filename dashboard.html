@@ -1603,19 +1603,47 @@
       setStatus('Deleting your account…', 'loading');
 
       try {
-        const { error } = await supabase.rpc('delete_my_account');
-        if (error) throw error;
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
+        if (!session?.access_token) throw new Error('No active session');
+
+        const response = await fetch(
+          'https://zeryppqymzbqesllxnvk.supabase.co/functions/v1/delete-my-account',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': supabase.supabaseKey
+            }
+          }
+        );
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Account deletion failed');
+        }
+
         await supabase.auth.signOut({ scope: 'local' });
+
         deleteConfirmation.hidden = true;
         closeProfileDialog();
         redirectToLogin();
+
       } catch (error) {
+        console.error('Account deletion failed:', error);
+
         confirmDeleteButton.disabled = false;
         confirmDeleteButton.textContent = 'Delete forever';
-        setStatus('Unable to delete your account right now. Please try again.', 'error');
+
+        setStatus(
+          'Unable to delete your account right now. Please try again.',
+          'error'
+        );
       }
     });
-
     const announcementBanner = document.querySelector('#announcement-banner');
     const announcementType = document.querySelector('#announcement-type');
     const announcementCopy = document.querySelector('#announcement-copy');

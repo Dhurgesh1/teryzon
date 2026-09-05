@@ -1,16 +1,45 @@
 -- Run this in Supabase SQL Editor to enable account deletion from the Dashboard.
+create table if not exists public.account_deletion_email_claims (
+  user_id uuid primary key,
+  email text not null,
+  full_name text,
+  created_at timestamptz not null default now()
+);
+
+revoke all on table public.account_deletion_email_claims from public, anon, authenticated;
+
 create or replace function public.delete_my_account()
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  deleted_user_id uuid := auth.uid();
+  deleted_email text;
+  deleted_full_name text;
 begin
-  if auth.uid() is null then
+  if deleted_user_id is null then
     raise exception 'You must be signed in to delete your account';
   end if;
 
-  delete from auth.users where id = auth.uid();
+  select u.email, coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name')
+  into deleted_email, deleted_full_name
+  from auth.users u
+  where u.id = deleted_user_id;
+
+  if deleted_email is null then
+    raise exception 'Unable to find the account email';
+  end if;
+
+  insert into public.account_deletion_email_claims (user_id, email, full_name)
+  values (deleted_user_id, deleted_email, deleted_full_name);
+
+  delete from auth.users where id = deleted_user_id;
+
+  if not found then
+    raise exception 'Unable to delete the account';
+  end if;
 end;
 $$;
 
