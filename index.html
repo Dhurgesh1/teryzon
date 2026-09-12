@@ -52,8 +52,41 @@
     .footer-column a { color: var(--muted); display: block; font-size: .85rem; margin-bottom: 9px; }
     .footer-column a:hover { color: var(--ink); }
     .footer-bottom { border-top: 1px solid var(--line); color: var(--muted); display: flex; font-size: .75rem; justify-content: space-between; margin-top: 45px; padding-top: 20px; }
-    @media(max-width:760px) { .team-heading { align-items: start; flex-direction: column; gap: 20px; } .team-grid { grid-template-columns: 1fr 1fr; } .footer-grid { grid-template-columns: 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } .footer-bottom { align-items: start; flex-direction: column; gap: 8px; } }
+    .story-section { background: #0b0807; border-top: 1px solid var(--line); }
+    .story-heading { align-items: end; display: flex; gap: 28px; justify-content: space-between; margin-bottom: 36px; }
+    .story-heading h2 { margin-bottom: 0; }
+    .story-intro { color: var(--muted); margin: 0; max-width: 360px; }
+    .story-timeline { overflow-x: clip; padding-top: 8px; position: relative; }
+    .story-timeline::before { background: linear-gradient(180deg, rgba(175,83,59,0) 0%, rgba(175,83,59,0.56) 10%, rgba(175,83,59,0.56) 90%, rgba(175,83,59,0) 100%); bottom: 0; content: ""; left: 50%; position: absolute; top: 0; width: 1px; }
+    .timeline-item { align-items: center; display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr); margin-bottom: 28px; opacity: 0; position: relative; transform: translateY(22px); transition: opacity .6s ease, transform .6s ease; }
+    .timeline-item.is-visible { opacity: 1; transform: translateY(0); }
+    .timeline-item:nth-child(odd) .timeline-card { grid-column: 1; }
+    .timeline-item:nth-child(even) .timeline-card { grid-column: 3; }
+    .timeline-item .timeline-marker { grid-column: 2; }
+    .timeline-marker { align-items: center; background: #0b0807; border: 1px solid var(--line); border-radius: 50%; box-shadow: 0 0 0 10px #0b0807; color: var(--terracotta); display: inline-flex; font-size: .72rem; font-weight: 700; height: 56px; justify-content: center; letter-spacing: .12em; position: relative; width: 56px; z-index: 1; }
+    .timeline-card { background: rgba(19, 16, 15, 0.86); border: 1px solid var(--line); border-radius: 22px; padding: 24px 24px 18px; position: relative; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+    .timeline-item.is-active .timeline-card { border-color: rgba(175, 83, 59, 0.72); box-shadow: 0 18px 42px rgba(0,0,0,0.18); transform: translateY(-2px); }
+    .timeline-item.is-active .timeline-marker { background: rgba(175, 83, 59, 0.08); border-color: var(--terracotta); box-shadow: 0 0 0 10px #0b0807, 0 0 0 1px rgba(175, 83, 59, 0.32); }
+    .timeline-item.mcop7 .timeline-card { border-color: rgba(175, 83, 59, 0.72); }
+    .timeline-item.mcop7 .timeline-marker { box-shadow: 0 0 0 11px #0b0807, 0 0 0 1px rgba(175, 83, 59, 0.42); }
+    .timeline-kicker { color: var(--terracotta); font-size: .68rem; font-weight: 700; letter-spacing: .18em; margin-bottom: 12px; text-transform: uppercase; }
+    .timeline-card h3 { font-size: clamp(1.5rem, 1.7vw, 2.1rem); letter-spacing: -.04em; margin-bottom: 12px; }
+    .timeline-card p { color: var(--muted); font-size: .98rem; margin: 0; }
+    .timeline-card strong { color: var(--ink); }
+    .timeline-card .timeline-list { color: var(--ink); margin: 12px 0 0; padding-left: 1.15rem; }
+    .timeline-card .timeline-list li { color: var(--muted); margin-bottom: 8px; }
+    .timeline-flow { color: var(--ink); display: inline-block; margin-top: 12px; }
+    .timeline-quote { color: var(--ink); font-size: 1.02rem; }
+    .timeline-toggle { appearance: none; background: transparent; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); cursor: pointer; font: inherit; font-size: .72rem; letter-spacing: .12em; margin-top: 18px; padding: 9px 12px; text-transform: uppercase; transition: background .2s ease, border-color .2s ease; }
+    .timeline-toggle:hover, .timeline-toggle:focus-visible { background: rgba(175, 83, 59, 0.08); border-color: rgba(175, 83, 59, 0.5); outline: none; }
+    .timeline-expand { display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; overflow: hidden; transition: grid-template-rows .4s ease, opacity .28s ease, margin-top .3s ease; }
+    .timeline-expand[hidden] { display: none; }
+    .timeline-expand-inner { min-height: 0; overflow: hidden; }
+    .timeline-item.is-expanded .timeline-expand { grid-template-rows: 1fr; margin-top: 14px; opacity: 1; }
+    .timeline-expand p { color: var(--muted); font-size: .93rem; }
+    @media(max-width:760px) { .team-heading { align-items: start; flex-direction: column; gap: 20px; } .team-grid { grid-template-columns: 1fr 1fr; } .footer-grid { grid-template-columns: 1fr 1fr; } .footer-brand { grid-column: 1 / -1; } .footer-bottom { align-items: start; flex-direction: column; gap: 8px; } .story-heading { align-items: start; flex-direction: column; } .story-timeline { padding-left: 18px; } .story-timeline::before { left: 22px; } .timeline-item { grid-template-columns: 44px minmax(0, 1fr); gap: 14px; } .timeline-item:nth-child(odd) .timeline-card, .timeline-item:nth-child(even) .timeline-card, .timeline-item .timeline-marker { grid-column: auto; } .timeline-item .timeline-card { grid-column: 2; margin-left: 0; margin-right: 0; } .timeline-item .timeline-marker { box-shadow: 0 0 0 7px #0b0807; font-size: .62rem; height: 44px; justify-self: start; letter-spacing: .12em; width: 44px; } }
     @media(max-width:480px) { .team-grid, .footer-grid { grid-template-columns: 1fr; } .footer-brand { grid-column: auto; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } .timeline-item { opacity: 1; transform: none; } .timeline-expand { transition: none; } }
   </style>
   <link rel="stylesheet" href="/assets/css/chatbot.css">
   <script src="/assets/js/chatbot.js" defer></script>
@@ -76,7 +109,7 @@
         <morph-icon id="menu-icon" icon="M4 6h16M4 12h16M4 18h16" label="Menu"></morph-icon>
       </button>
       <div class="nav-links" id="main-menu">
-        <a href="#about">About Teryzon</a><a href="#process">How it works</a><a href="#plans">Platform</a><a href="#faq">FAQ</a><a href="/contact">Contact</a>
+        <a href="#about">About Teryzon</a><a href="#story">Our journey</a><a href="#process">How it works</a><a href="#plans">Platform</a><a href="#faq">FAQ</a><a href="/contact">Contact</a>
         <div class="theme-control" id="theme-control" role="group" aria-label="Theme mode">
           <label title="Use system theme"><input type="radio" name="theme" value="system" aria-label="Use system theme"><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg></span></label>
           <label title="Use light theme"><input type="radio" name="theme" value="light" aria-label="Use light theme"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg></span></label>
@@ -93,6 +126,116 @@
       <div class="hero-actions"><a class="button button-primary connect-link" href="/login">Connect your Rover!</a><a class="button" href="/download">Download app</a><a class="text-link" href="#process">Explore the platform <span aria-hidden="true">&#8595;</span></a></div>
     </div><div class="route-art" aria-label="A simplified soil sensor dashboard illustration" role="img"><div class="route-label label-top">TERYZON / LIVE SCAN</div><div class="route-label label-bottom">SOIL HEALTH<br><strong>MONITORING</strong></div><div class="route-line route-one"></div><div class="route-line route-two"></div><div class="route-line route-three"></div><span class="route-dot dot-one"></span><span class="route-dot dot-two"></span><span class="route-dot dot-three"></span><div class="route-pin">+</div></div></div><div class="hero-meta shell"><span>01 / 04</span><span class="meta-line"></span><span>Data for healthier ground</span></div></section>
     <section class="section intro" id="about"><div class="shell split"><div><p class="eyebrow"><span></span> Meet Teryzon</p><h2>See what is<br><em>underneath.</em></h2></div><div class="section-copy"><p>Teryzon combines robotics, IoT sensors, data analytics, and AI to make soil health assessment faster, easier, and more accessible wherever people learn, grow, and care for land.</p><div class="stat-row"><div><strong>4</strong><span>live soil readings</span></div><div><strong>24/7</strong><span>field intelligence</span></div><div><strong>AI</strong><span>actionable insights</span></div></div></div></div></section>
+    <section class="section story-section" id="story"><div class="shell"><div class="story-heading"><div><p class="eyebrow"><span></span> The journey behind Teryzon</p><h2>From a question<br><em>to a rover.</em></h2></div><p class="story-intro">A simple idea grew into a system for measuring what often goes unseen beneath the ground.</p></div><div class="story-timeline" aria-label="Teryzon story timeline">
+      <article class="timeline-item is-visible is-active" id="story-1">
+        <div class="timeline-marker" aria-hidden="true">01</div>
+        <div class="timeline-card">
+          <p class="timeline-kicker">The Beginning</p>
+          <h3>Why did we start?</h3>
+          <p>Environmental problems are often visible above the ground, but many important changes happen underneath it. Soil can look healthy while its condition is slowly changing.</p>
+          <button class="timeline-toggle" type="button" aria-expanded="false" aria-controls="story-1-more">Read more</button>
+          <div class="timeline-expand" id="story-1-more" hidden>
+            <div class="timeline-expand-inner">
+              <p>We wanted to understand what was happening beneath the surface using real measurements instead of assumptions.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="timeline-item" id="story-2">
+        <div class="timeline-marker" aria-hidden="true">02</div>
+        <div class="timeline-card">
+          <p class="timeline-kicker">The Question</p>
+          <h3>Why did we choose soil?</h3>
+          <p>Soil supports agriculture, plants, ecosystems and communities, but its health is often overlooked because many problems are difficult to see.</p>
+          <button class="timeline-toggle" type="button" aria-expanded="false" aria-controls="story-2-more">Read more</button>
+          <div class="timeline-expand" id="story-2-more" hidden>
+            <div class="timeline-expand-inner">
+              <p>This led us to focus on measurable factors such as:</p>
+              <ul class="timeline-list">
+                <li>Moisture</li>
+                <li>Temperature</li>
+                <li>pH</li>
+                <li>Electrical conductivity</li>
+                <li>Humidity</li>
+              </ul>
+              <p><strong>The question became:</strong> If we can measure what cannot easily be seen, can we understand it better?</p>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="timeline-item" id="story-3">
+        <div class="timeline-marker" aria-hidden="true">03</div>
+        <div class="timeline-card">
+          <p class="timeline-kicker">From Idea to System</p>
+          <h3>Why did we make a rover?</h3>
+          <p>A fixed sensor can tell us about one location, but soil conditions can change from place to place.</p>
+          <button class="timeline-toggle" type="button" aria-expanded="false" aria-controls="story-3-more">Read more</button>
+          <div class="timeline-expand" id="story-3-more" hidden>
+            <div class="timeline-expand-inner">
+              <p>We wanted a system that could move, explore different areas, collect measurements and bring the data together.</p>
+              <p class="timeline-quote">That idea became TERYZON — an ecological survey and restoration rover.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="timeline-item mcop7" id="story-4">
+        <div class="timeline-marker" aria-hidden="true">04</div>
+        <div class="timeline-card">
+          <p class="timeline-kicker">MCOP7</p>
+          <h3>Why did we make this for MCOP7?</h3>
+          <p>We chose <strong>MCOP7 Target 5</strong>:</p>
+          <p class="timeline-quote">“Assess soil health in your city and develop a strategy to improve soil health.”</p>
+          <button class="timeline-toggle" type="button" aria-expanded="false" aria-controls="story-4-more">Read more</button>
+          <div class="timeline-expand" id="story-4-more" hidden>
+            <div class="timeline-expand-inner">
+              <p>This gave TERYZON a clear purpose:</p>
+              <p class="timeline-flow"><strong>Measure → Understand → Develop a strategy → Test → Recheck</strong></p>
+              <p>The rover is designed to help turn soil measurements into practical environmental decisions.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="timeline-item" id="story-5">
+        <div class="timeline-marker" aria-hidden="true">05</div>
+        <div class="timeline-card">
+          <p class="timeline-kicker">The Build</p>
+          <h3>From concept to prototype</h3>
+          <p>The idea became a physical system using:</p>
+          <button class="timeline-toggle" type="button" aria-expanded="false" aria-controls="story-5-more">Read more</button>
+          <div class="timeline-expand" id="story-5-more" hidden>
+            <div class="timeline-expand-inner">
+              <ul class="timeline-list">
+                <li>ESP32-S3</li>
+                <li>Soil moisture sensor</li>
+                <li>Temperature and humidity sensors</li>
+                <li>pH sensor</li>
+                <li>OLED display</li>
+                <li>Motor driver and four-wheel drive</li>
+                <li>ESP32-CAM</li>
+                <li>Servo/linear actuator for probe deployment</li>
+                <li>Web-based rover control and monitoring</li>
+              </ul>
+              <p>The goal was not simply to build a robot, but to create a system capable of collecting useful environmental data.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+      <article class="timeline-item" id="story-6">
+        <div class="timeline-marker" aria-hidden="true">06</div>
+        <div class="timeline-card">
+          <p class="timeline-kicker">What Comes Next</p>
+          <h3>Measure. Restore. Recheck.</h3>
+          <p>The next stage is real-world testing.</p>
+          <button class="timeline-toggle" type="button" aria-expanded="false" aria-controls="story-6-more">Read more</button>
+          <div class="timeline-expand" id="story-6-more" hidden>
+            <div class="timeline-expand-inner">
+              <p>TERYZON will collect measurements from different areas, analyse the results, develop improvement strategies, test those strategies, and return to measure the soil again.</p>
+              <p class="timeline-quote"><strong>Explore. Measure. Understand. Restore.</strong></p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div></div></section>
     <section class="section team-section" id="team"><div class="shell"><div class="team-heading"><div><p class="eyebrow"><span></span> The people behind Teryzon</p><h2>Small team,<br><em>deep roots.</em></h2></div><p class="team-intro">A multidisciplinary team building practical technology for healthier ground and more curious communities.</p></div><div class="team-grid">
       <article class="team-card"><morph-icon class="team-photo" icon="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8" aria-hidden="true"></morph-icon><h3>Dhurgesh Maloth</h3><span class="team-role">Project Leader  &amp; All-in-One Developer</span><p>Leads project coordination while developing the website, UI/UX, and rover, supporting every major part of Teryzon.</p></article>
             <article class="team-card"><morph-icon class="team-photo" icon="M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8" aria-hidden="true"></morph-icon><h3>Raeyansh Agarwal</h3><span class="team-role">Project Leader  &amp; Designer</span><p>Supports project leadership and coordination through video editing, rover design, and visual website development.</p></article>
@@ -107,7 +250,7 @@
     <section class="section faq-section" id="faq"><div class="shell split"><div><p class="eyebrow"><span></span> Good to know</p><h2>Questions,<br><em>answered.</em></h2><p class="muted">Curious about the rover, the data, or where Teryzon fits? Start here.</p></div><div class="faq-list"><details open><summary>What does Teryzon measure?</summary><p>The rover captures soil moisture, temperature, pH, and electrical conductivity (EC) using onboard sensors.</p></details><details><summary>Where can the rover operate?</summary><p>Teryzon is designed for farms, school grounds, research sites, gardens, and other land areas where soil insight matters.</p></details><details><summary>How does the dashboard help?</summary><p>It brings live measurements into one modern view so users can analyze conditions, identify potential problems, and understand changes over time.</p></details><details><summary>Who is Teryzon for?</summary><p>Farmers, students, schools, landowners, researchers, and environmental organizations can use Teryzon to make better decisions about soil.</p></details></div></div></section>
     <section class="section contact-section" id="contact"><div class="shell contact-box"><div><p class="eyebrow"><span></span> Bring Teryzon to your field</p><h2>Ready to<br><em>see deeper?</em></h2><p>Tell us about your land, project, or learning space. We will show you how Teryzon can help.</p></div><form class="contact-form" id="contact-form"><label>Name<input name="name" type="text" placeholder="Your name" required></label><label>Email<input name="email" type="email" placeholder="you@company.com" required></label><label>Tell us about your project<textarea name="message" rows="3" placeholder="A farm, school, study, or field..."></textarea></label><button class="button button-primary" type="submit">Request a demo <span aria-hidden="true">&#8594;</span></button><p class="form-status" aria-live="polite"></p></form></div></section>
   </main>
-  <footer class="footer"><div class="shell"><div class="footer-grid"><div class="footer-brand"><a class="brand" href="#home"><img class="brand-logo brand-logo-small" src="images/Horizons logo (1).png" alt="Horizons"></a><p>Robotics, sensors, and intelligence for healthier soil.</p></div><div class="footer-column"><h3>Explore</h3><a href="#about">About Teryzon</a><a href="#team">Our team</a><a href="#process">How it works</a><a href="#plans">Platform</a><a href="#faq">FAQ</a></div><div class="footer-column"><h3>Legal</h3><a href="terms-of-service.html">Terms of service</a><a href="privacy-policy.html">Privacy policy</a><a href="cookie-policy.html">Cookie policy</a><a href="accessibility.html">Accessibility</a></div></div><div class="footer-bottom"><span>&copy; 2026 Teryzon™. All rights reserved.</span><span>Built for healthier ground.</span></div></div></footer>
+  <footer class="footer"><div class="shell"><div class="footer-grid"><div class="footer-brand"><a class="brand" href="#home"><img class="brand-logo brand-logo-small" src="images/Horizons logo (1).png" alt="Horizons"></a><p>Robotics, sensors, and intelligence for healthier soil.</p></div><div class="footer-column"><h3>Explore</h3><a href="#about">About Teryzon</a><a href="#story">Our journey</a><a href="#team">Our team</a><a href="#process">How it works</a><a href="#plans">Platform</a><a href="#faq">FAQ</a></div><div class="footer-column"><h3>Legal</h3><a href="terms-of-service.html">Terms of service</a><a href="privacy-policy.html">Privacy policy</a><a href="cookie-policy.html">Cookie policy</a><a href="accessibility.html">Accessibility</a></div></div><div class="footer-bottom"><span>&copy; 2026 Teryzon™. All rights reserved.</span><span>Built for healthier ground.</span></div></div></footer>
   <script type="module">
     import { defineMorphIcon } from 'https://esm.sh/morphicons@1.7.0/element';
     import './assets/js/theme.js';
@@ -118,6 +261,73 @@
     toggle.addEventListener('click', () => { const open = menu.classList.toggle('is-open'); toggle.setAttribute('aria-expanded', open); toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); menuIcon.morphTo(open ? xIcon : 'M4 6h16M4 12h16M4 18h16'); });
     menu.addEventListener('click', () => { menu.classList.remove('is-open'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Open menu'); menuIcon.morphTo('M4 6h16M4 12h16M4 18h16'); });
     document.querySelector('#contact-form').addEventListener('submit', (event) => { event.preventDefault(); event.currentTarget.querySelector('.form-status').textContent = 'Thanks. We will be in touch shortly.'; event.currentTarget.reset(); });
+
+    const timelineItems = document.querySelectorAll('.timeline-item');
+    const timelineButtons = document.querySelectorAll('.timeline-toggle');
+
+    const setActiveTimelineItem = (item) => {
+      timelineItems.forEach((entry) => {
+        entry.classList.toggle('is-active', entry === item);
+      });
+    };
+
+    if ('IntersectionObserver' in window) {
+      const timelineObserver = new IntersectionObserver((entries) => {
+        const visibleEntries = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visibleEntries.length) {
+          const activeItem = visibleEntries[0].target;
+          activeItem.classList.add('is-visible');
+          setActiveTimelineItem(activeItem);
+        }
+      }, { threshold: [0.25, 0.5, 0.75] });
+
+      timelineItems.forEach((item) => {
+        timelineObserver.observe(item);
+      });
+    } else {
+      timelineItems.forEach((item, index) => {
+        item.classList.add('is-visible');
+        if (index === 0) setActiveTimelineItem(item);
+      });
+    }
+
+    timelineButtons.forEach((button) => {
+      const item = button.closest('.timeline-item');
+      const panel = item ? item.querySelector('.timeline-expand') : null;
+
+      if (!item || !panel) return;
+
+      panel.hidden = true;
+      item.classList.remove('is-expanded');
+      button.setAttribute('aria-expanded', 'false');
+      button.textContent = 'Read more';
+
+      button.addEventListener('click', () => {
+        const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+        if (isExpanded) {
+          item.classList.remove('is-expanded');
+          button.setAttribute('aria-expanded', 'false');
+          button.textContent = 'Read more';
+
+          const handleTransitionEnd = () => {
+            panel.hidden = true;
+            panel.removeEventListener('transitionend', handleTransitionEnd);
+          };
+
+          panel.addEventListener('transitionend', handleTransitionEnd, { once: true });
+          return;
+        }
+
+        panel.hidden = false;
+        requestAnimationFrame(() => {
+          item.classList.add('is-expanded');
+        });
+        button.setAttribute('aria-expanded', 'true');
+        button.textContent = 'Read less';
+      });
+    });
+
     const announcementBanner = document.querySelector('#announcement-banner');
     const announcementType = document.querySelector('#announcement-type');
     const announcementCopy = document.querySelector('#announcement-copy');
