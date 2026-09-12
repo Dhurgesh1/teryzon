@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="images/Horizons%20logo%20(1).png" width="120" alt="TERYZON Logo">
+<img src="images/Horizons%20logo%20(1).png" width="320" alt="TERYZON Logo">
 
-# TERYZON
+
 
 ### Autonomous Ecological Survey & Restoration Rover
 
