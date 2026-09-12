@@ -240,28 +240,6 @@ The current system is designed to operate **locally**, allowing the monitoring i
 
 ---
 
-## Development Status
-
-| Feature                     | Status |
-| --------------------------- | :----: |
-| ESP32-S3 setup              |    ✅   |
-| Initial sensor integration  |    ✅   |
-| OLED display                |    ✅   |
-| Local ESP32 web server      |    ✅   |
-| Rover control interface     |    ✅   |
-| Sensor monitoring interface |    ✅   |
-| Rover assembly              |   🔄   |
-| Sensor calibration          |   🔄   |
-| Soil-data collection        |    ⬜   |
-| Restoration testing         |    ⬜   |
-| Before/after comparison     |    ⬜   |
-| Final field testing         |    ⬜   |
-
-**Legend:**
-✅ Completed · 🔄 In Progress · ⬜ Planned
-
----
-
 ## Environmental Impact
 
 TERYZON is based on a simple idea:
