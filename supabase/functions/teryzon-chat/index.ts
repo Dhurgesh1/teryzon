@@ -88,15 +88,48 @@ Deno.serve(async (request) => {
     .filter((attachment) => typeof attachment.dataUrl === 'string' && attachment.dataUrl.startsWith('data:image/'))
     .slice(0, MAX_IMAGE_COUNT);
 
+  const normalizeMessageContent = (value: unknown) => {
+    if (Array.isArray(value)) {
+      const filtered = value.filter((part) => {
+        if (typeof part === 'string') return part.trim().length > 0;
+        if (part && typeof part === 'object' && 'type' in part) {
+          const type = String((part as { type?: string }).type || '');
+          if (type === 'text') return String((part as { text?: string }).text || '').trim().length > 0;
+          if (type === 'image_url') return typeof (part as { image_url?: { url?: string } }).image_url?.url === 'string';
+        }
+        return false;
+      });
+      return filtered.length ? filtered : '';
+    }
+    return String(value || '').slice(0, MAX_MESSAGE_LENGTH);
+  };
+
   const messages = payload.messages
     .map((message) => {
-      const content = String(message.content || '').slice(0, MAX_MESSAGE_LENGTH);
+      const role = message.role === 'assistant' ? 'assistant' : 'user';
+      const content = normalizeMessageContent(message.content);
       return {
-        role: message.role === 'assistant' ? 'assistant' : 'user',
+        role,
         content
       };
     })
-    .filter((message) => message.content.trim());
+    .filter((message) => {
+      if (Array.isArray(message.content)) {
+        return message.content.some((part) => {
+          if (typeof part === 'string') return part.trim().length > 0;
+          if (part && typeof part === 'object' && 'type' in part) {
+            if (String((part as { type?: string }).type || '') === 'text') {
+              return String((part as { text?: string }).text || '').trim().length > 0;
+            }
+            if (String((part as { type?: string }).type || '') === 'image_url') {
+              return typeof (part as { image_url?: { url?: string } }).image_url?.url === 'string';
+            }
+          }
+          return false;
+        });
+      }
+      return String(message.content || '').trim().length > 0;
+    });
 
   if (!messages.length) return responseJson({ error: 'Empty conversation' }, 400);
 

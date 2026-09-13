@@ -48,7 +48,18 @@ const loadSessions = () => {
     return [];
   }
 };
-const saveSessions = (sessions) => localStorage.setItem(CHAT_KEY, JSON.stringify(sessions.slice(0, MAX_SESSIONS)));
+const saveSessions = (sessions) => {
+  const cleanedSessions = sessions.slice(0, MAX_SESSIONS).map((session) => ({
+    ...session,
+    messages: (session.messages || []).map((message) => ({
+      ...message,
+      attachments: Array.isArray(message.attachments)
+        ? message.attachments.map((attachment) => stripAttachmentDataForStorage(attachment))
+        : []
+    }))
+  }));
+  localStorage.setItem(CHAT_KEY, JSON.stringify(cleanedSessions));
+};
 const getActiveChatId = () => localStorage.getItem(ACTIVE_CHAT_KEY) || null;
 const setActiveChatId = (id) => localStorage.setItem(ACTIVE_CHAT_KEY, id);
 
@@ -70,6 +81,52 @@ const sanitizeAttachment = (attachment) => ({
   extractionStatus: attachment.extractionStatus || '',
   error: attachment.error || ''
 });
+
+const stripAttachmentDataForStorage = (attachment = {}) => {
+  const { dataUrl, ...rest } = attachment;
+  return rest;
+};
+
+const buildMultimodalMessageContent = ({ role, content, attachments = [] }) => {
+  const textSegments = [];
+  const mediaSegments = [];
+  const textValue = String(content || '').trim();
+  if (textValue) textSegments.push(textValue);
+
+  attachments.forEach((attachment) => {
+    if (attachment.kind === 'image' && attachment.dataUrl && attachment.dataUrl.startsWith('data:image/')) {
+      mediaSegments.push({
+        type: 'image_url',
+        image_url: { url: attachment.dataUrl }
+      });
+      return;
+    }
+
+    if (attachment.extractedText && attachment.extractionStatus !== 'failed') {
+      textSegments.push(`Attachment: ${attachment.name}\n${clampDocumentText(attachment.extractedText)}`);
+      return;
+    }
+
+    if (attachment.error) {
+      textSegments.push(`Attachment issue: ${attachment.name} — ${attachment.error}`);
+    }
+  });
+
+  const parts = [];
+  const textBody = textSegments.join('\n\n').slice(0, MAX_INPUT);
+  if (textBody) parts.push({ type: 'text', text: textBody });
+  if (mediaSegments.length) parts.push(...mediaSegments.slice(0, 4));
+
+  if (!parts.length) {
+    return { role, content: '' };
+  }
+
+  if (parts.length === 1 && parts[0].type === 'text') {
+    return { role, content: parts[0].text };
+  }
+
+  return { role, content: parts };
+};
 
 const isPdfFile = (file) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
 const isDocxFile = (file) => file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(file.name || '');
@@ -498,7 +555,13 @@ const boot = () => {
 
     const sanitizedAttachments = attachments.map((attachment) => sanitizeAttachment(attachment));
     const hasDocumentContext = sanitizedAttachments.some((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
-    const hasImageAttachments = sanitizedAttachments.some((attachment) => attachment.kind === 'image' && attachment.dataUrl);
+    const hasImageAttachments = sanitizedAttachments.some((attachment) => attachment.kind === 'image' && attachment.dataUrl && attachment.dataUrl.startsWith('data:image/'));
+    const invalidImages = sanitizedAttachments.filter((attachment) => attachment.kind === 'image' && (!attachment.dataUrl || !attachment.dataUrl.startsWith('data:image/')));
+    if (invalidImages.length) {
+      window.alert('The image could not be prepared for analysis. Please try uploading it again.');
+      return;
+    }
+
     const userMessage = {
       role: 'user',
       content: (trimmed || 'Shared attachment(s)').slice(0, MAX_INPUT),
@@ -516,61 +579,31 @@ const boot = () => {
     setPending(true);
 
     try {
-      const payloadMessages = activeSession.messages.slice(-MAX_HISTORY).map(({ role, content, attachments: itemAttachments }) => {
-        const textContext = [];
-        const imageContext = [];
-        if (Array.isArray(itemAttachments) && itemAttachments.length) {
-          itemAttachments.forEach((item) => {
-            if (item.kind === 'image' && item.dataUrl) {
-              imageContext.push({
-                name: item.name,
-                type: item.type,
-                dataUrl: item.dataUrl
-              });
-            } else if (item.extractedText && item.extractionStatus !== 'failed') {
-              textContext.push(`Attachment: ${item.name}\n${clampDocumentText(item.extractedText)}`);
-            } else if (item.error) {
-              textContext.push(`Attachment issue: ${item.name} — ${item.error}`);
-            }
-          });
-        }
-
-        const combinedContent = [content || '', ...textContext].filter(Boolean).join('\n\n');
-        const cleanMessage = { role, content: combinedContent.slice(0, MAX_INPUT) };
-        return { ...cleanMessage, images: imageContext.slice(0, 4) };
-      });
+      const payloadMessages = activeSession.messages.slice(-MAX_HISTORY).map((message) => buildMultimodalMessageContent({
+        role: message.role,
+        content: message.content,
+        attachments: Array.isArray(message.attachments) ? message.attachments : []
+      }));
 
       const documentAttachments = sanitizedAttachments.filter((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
-      const imageAttachments = sanitizedAttachments.filter((attachment) => attachment.kind === 'image' && attachment.dataUrl);
+      const imageAttachments = sanitizedAttachments.filter((attachment) => attachment.kind === 'image' && attachment.dataUrl && attachment.dataUrl.startsWith('data:image/'));
       const failedAttachments = sanitizedAttachments.filter((attachment) => attachment.error && !attachment.extractedText);
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: payloadMessages.map(({ role, content, images }) => ({
-            role,
-            content: (images && images.length
-              ? `${content}\n\n[Image attachment included for analysis: ${images.map((image) => image.name).join(', ')}]`
-              : content)
+          messages: payloadMessages.map((message) => ({
+            role: message.role,
+            content: message.content
           })),
-          attachments: [
-            ...documentAttachments.map((attachment) => ({
-              name: attachment.name,
-              type: attachment.type,
-              kind: attachment.kind,
-              size: attachment.size,
-              extractedText: clampDocumentText(attachment.extractedText),
-              extractionStatus: attachment.extractionStatus
-            })),
-            ...imageAttachments.map((attachment) => ({
-              name: attachment.name,
-              type: attachment.type,
-              kind: attachment.kind,
-              size: attachment.size,
-              dataUrl: attachment.dataUrl,
-              extractionStatus: attachment.extractionStatus
-            }))
-          ],
+          attachments: documentAttachments.map((attachment) => ({
+            name: attachment.name,
+            type: attachment.type,
+            kind: attachment.kind,
+            size: attachment.size,
+            extractedText: clampDocumentText(attachment.extractedText),
+            extractionStatus: attachment.extractionStatus
+          })),
           imageAttachments: imageAttachments.map((attachment) => ({
             name: attachment.name,
             type: attachment.type,
