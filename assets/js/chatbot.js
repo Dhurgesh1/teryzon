@@ -4,9 +4,18 @@ const API_URL = window.TERYZON_CHAT_API_URL || 'https://zeryppqymzbqesllxnvk.sup
 const MAX_INPUT = 4000;
 const MAX_HISTORY = 12;
 const MAX_SESSIONS = 12;
+const MAX_DOCUMENT_CHARS = 20000;
+const MAX_DOCUMENT_PAGES = 100;
+const MAX_ATTACHMENTS = 4;
+const MAX_FILE_BYTES = 12 * 1024 * 1024;
 const quickActions = ['What is Teryzon?', 'How does the rover work?', 'Environmental monitoring', 'Explain my data', 'Technology used'];
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+const clampDocumentText = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.length > MAX_DOCUMENT_CHARS ? `${text.slice(0, MAX_DOCUMENT_CHARS)}\n\n[Document content truncated to protect message size.]` : text;
+};
 const renderMarkdown = (source) => {
   let html = escapeHtml(source).replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -54,8 +63,85 @@ const sanitizeAttachment = (attachment) => ({
   type: String(attachment.type || 'file'),
   size: Number(attachment.size || 0),
   kind: attachment.kind || (attachment.type && attachment.type.startsWith('image/') ? 'image' : 'file'),
-  dataUrl: attachment.dataUrl || ''
+  dataUrl: attachment.dataUrl || '',
+  extractedText: attachment.extractedText || '',
+  extractionStatus: attachment.extractionStatus || '',
+  error: attachment.error || ''
 });
+
+const isPdfFile = (file) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+const isDocxFile = (file) => file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(file.name || '');
+const isWordFile = (file) => file.type === 'application/msword' || /\.doc$/i.test(file.name || '');
+const isJsonFile = (file) => file.type === 'application/json' || /\.json$/i.test(file.name || '');
+const isCsvFile = (file) => file.type === 'text/csv' || /\.csv$/i.test(file.name || '');
+const isTextFile = (file) => file.type.startsWith('text/') || /\.(txt|md|log)$/i.test(file.name || '');
+
+const readTextFile = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = () => reject(new Error('Unable to read file'));
+  reader.readAsText(file);
+});
+
+const limitText = (text) => clampDocumentText(text).slice(0, MAX_DOCUMENT_CHARS);
+
+const extractPdfText = async (file) => {
+  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs');
+  if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.mjs';
+  }
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, MAX_DOCUMENT_PAGES); pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+    const text = textContent.items.map((item) => ('str' in item ? item.str : '')).join(' ').replace(/\s+/g, ' ').trim();
+    pages.push(`--- Page ${pageNumber} ---\n${text || '[No selectable text found on this page.]'}`);
+  }
+  const extracted = pages.join('\n\n');
+  if (!/\S/.test(extracted.replace(/--- Page \d+ ---|\[No selectable text found on this page\.\]/g, ''))) {
+    throw new Error('This PDF appears to be scanned or contains no selectable text. OCR/image-based processing is required.');
+  }
+  return extracted;
+};
+
+const extractDocxText = async (file) => {
+  const mammoth = await import('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js');
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  if (!result?.value || !result.value.trim()) {
+    throw new Error('This DOCX file is empty or could not be read.');
+  }
+  return result.value;
+};
+
+const extractTextAttachment = async (file) => {
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error('This document is too large to process in the chat.');
+  }
+
+  if (isPdfFile(file)) return extractPdfText(file);
+  if (isDocxFile(file)) return extractDocxText(file);
+  if (isWordFile(file)) {
+    throw new Error('Legacy DOC files are not supported in this browser environment. Please convert to DOCX or TXT.');
+  }
+  if (isJsonFile(file)) {
+    const text = await readTextFile(file);
+    try {
+      return JSON.stringify(JSON.parse(text), null, 2);
+    } catch {
+      return text;
+    }
+  }
+  if (isCsvFile(file)) {
+    return await readTextFile(file);
+  }
+  if (isTextFile(file)) {
+    return await readTextFile(file);
+  }
+  throw new Error('This file type is not supported for document analysis.');
+};
 
 const trimTitle = (value) => {
   const text = String(value || '').trim();
@@ -289,7 +375,19 @@ const boot = () => {
   };
 
   const addPendingAttachments = async (files) => {
-    const items = await Promise.all(Array.from(files).map(async (file) => {
+    const validFiles = Array.from(files).filter((file) => file && file.size > 0);
+    const remainingSlots = Math.max(0, MAX_ATTACHMENTS - pendingUploads.length);
+    const selected = validFiles.slice(0, remainingSlots);
+
+    if (!selected.length) {
+      if (validFiles.length > 0) {
+        const message = validFiles.length > MAX_ATTACHMENTS ? `You can upload up to ${MAX_ATTACHMENTS} files at a time.` : 'No valid files were selected.';
+        window.alert(message);
+      }
+      return;
+    }
+
+    const items = await Promise.all(selected.map(async (file) => {
       const isImage = file.type.startsWith('image/');
       const dataUrl = isImage ? await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -298,14 +396,32 @@ const boot = () => {
         reader.readAsDataURL(file);
       }) : '';
 
-      return sanitizeAttachment({
-        id: createId(),
-        name: file.name,
-        type: file.type || (isImage ? 'image' : 'file'),
-        size: file.size,
-        kind: isImage ? 'image' : 'file',
-        dataUrl: typeof dataUrl === 'string' ? dataUrl : ''
-      });
+      try {
+        const extractedText = isImage ? '' : limitText(await extractTextAttachment(file));
+        return sanitizeAttachment({
+          id: createId(),
+          name: file.name,
+          type: file.type || (isImage ? 'image' : 'file'),
+          size: file.size,
+          kind: isImage ? 'image' : 'file',
+          dataUrl: typeof dataUrl === 'string' ? dataUrl : '',
+          extractedText,
+          extractionStatus: isImage ? 'image-ready' : 'document-ready'
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to read this document.';
+        return sanitizeAttachment({
+          id: createId(),
+          name: file.name,
+          type: file.type || 'file',
+          size: file.size,
+          kind: 'file',
+          dataUrl: '',
+          extractedText: '',
+          extractionStatus: 'failed',
+          error: message
+        });
+      }
     }));
 
     pendingUploads = [...pendingUploads, ...items.filter(Boolean)];
@@ -323,11 +439,13 @@ const boot = () => {
     if (!activeSession || (pending && !trimmed && !attachments.length)) return;
     if (!trimmed && !attachments.length) return;
 
+    const sanitizedAttachments = attachments.map((attachment) => sanitizeAttachment(attachment));
+    const hasDocumentContext = sanitizedAttachments.some((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
     const userMessage = {
       role: 'user',
       content: (trimmed || 'Shared attachment(s)').slice(0, MAX_INPUT),
       time: timestamp(),
-      attachments: attachments.map((attachment) => sanitizeAttachment(attachment))
+      attachments: sanitizedAttachments
     };
 
     activeSession.messages.push(userMessage);
@@ -340,15 +458,43 @@ const boot = () => {
     setPending(true);
 
     try {
-      const payloadMessages = activeSession.messages.slice(-MAX_HISTORY).map(({ role, content, attachments: itemAttachments }) => ({
-        role,
-        content: (content || '') + (itemAttachments && itemAttachments.length ? `\n\nAttachments: ${itemAttachments.map((item) => item.name).join(', ')}` : '')
-      }));
+      const payloadMessages = activeSession.messages.slice(-MAX_HISTORY).map(({ role, content, attachments: itemAttachments }) => {
+        const contextParts = [];
+        if (Array.isArray(itemAttachments) && itemAttachments.length) {
+          const extractedDocs = itemAttachments.filter((item) => item.extractedText && item.extractionStatus !== 'failed');
+          const failedDocs = itemAttachments.filter((item) => item.error && !item.extractedText);
+          if (extractedDocs.length) {
+            contextParts.push(extractedDocs.map((item) => `Attachment: ${item.name}\n${clampDocumentText(item.extractedText)}`).join('\n\n'));
+          }
+          if (failedDocs.length) {
+            contextParts.push(`Attachment processing issue: ${failedDocs.map((item) => `${item.name}: ${item.error}`).join('; ')}`);
+          }
+        }
+        const combinedContent = [content || '', ...contextParts].filter(Boolean).join('\n\n');
+        return { role, content: combinedContent.slice(0, MAX_INPUT) };
+      });
 
+      const documentAttachments = sanitizedAttachments.filter((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
+      const failedAttachments = sanitizedAttachments.filter((attachment) => attachment.error && !attachment.extractedText);
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: payloadMessages })
+        body: JSON.stringify({
+          messages: payloadMessages,
+          attachments: documentAttachments.map((attachment) => ({
+            name: attachment.name,
+            type: attachment.type,
+            kind: attachment.kind,
+            size: attachment.size,
+            extractedText: clampDocumentText(attachment.extractedText),
+            extractionStatus: attachment.extractionStatus
+          })),
+          failedAttachments: failedAttachments.map((attachment) => ({
+            name: attachment.name,
+            type: attachment.type,
+            error: attachment.error
+          }))
+        })
       });
 
       if (!response.ok) throw new Error('request failed');
@@ -358,10 +504,14 @@ const boot = () => {
       activeSession.messages.push({ role: 'assistant', content: String(data.message), time: timestamp() });
       activeSession.updatedAt = Date.now();
       lastFailed = null;
-    } catch {
+      if (hasDocumentContext && !data.message.toLowerCase().includes('document')) {
+        console.info('Document context sent successfully to Teryzon AI.');
+      }
+    } catch (error) {
+      const userMessageText = (error instanceof Error && error.message) || 'Could not process the uploaded document.';
       activeSession.messages.push({
         role: 'assistant',
-        content: navigator.onLine ? "Sorry, I'm having trouble connecting right now. Please try again." : "You're currently offline. Please check your internet connection and try again.",
+        content: navigator.onLine ? `Sorry, I ran into a problem while processing your request. ${userMessageText}` : "You're currently offline. Please check your internet connection and try again.",
         error: true,
         time: timestamp()
       });
