@@ -4,6 +4,7 @@ const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_HISTORY = 12;
 const WINDOW_MS = 60 * 1000;
+const MAX_IMAGE_COUNT = 4;
 const requestWindows = new Map<string, number[]>();
 
 const systemPrompt = `You are Teryzon AI, the official assistant for Teryzon.
@@ -11,6 +12,8 @@ const systemPrompt = `You are Teryzon AI, the official assistant for Teryzon.
 Teryzon is an autonomous ecological survey and restoration platform described on its website as combining robotics, IoT sensors, data analytics, AI, mapping, biodiversity documentation, soil monitoring, and environmental monitoring. The current website specifically describes soil moisture, temperature, pH, and electrical conductivity readings, a rover, a web dashboard, and AI-supported recommendations.
 
 When the user provides uploaded document content, treat it as the primary evidence for questions about that document. Use the document content as the source of truth. Do not say you cannot access the document when extracted document text is included. Do not invent details not present in the uploaded content. If a fact is not in the document, say it was not found in the uploaded material. Distinguish between information present in the document and general background knowledge. For page-specific questions, use page markers such as "--- Page X ---" when present. If the document appears incomplete or partial, say that clearly.
+
+When the user provides images, analyze the actual image content. Do not claim you cannot access the image when it has been successfully provided to the model. Answer questions about visible text, objects, diagrams, screenshots, logos, charts, screenshots, and other visible content. If the image is unclear, explain what cannot be determined. Do not describe an image as a PDF or scanned document unless the uploaded file is actually a PDF. An uploaded PNG/JPG/WebP image is an image, not a PDF.
 
 If a PDF appears scanned or image-based with no selectable text, mention that the uploaded PDF seems to be scanned or image-based and OCR or image-based processing would be required. Do not pretend extracted text exists when it does not.
 
@@ -46,9 +49,19 @@ Deno.serve(async (request) => {
 
   let payload: {
     messages?: Array<{ role?: string; content?: unknown }>;
-    attachments?: Array<{ name?: string; type?: string; extractedText?: string; kind?: string; size?: number; extractionStatus?: string }>;
+    attachments?: Array<{
+      name?: string;
+      type?: string;
+      extractedText?: string;
+      kind?: string;
+      size?: number;
+      extractionStatus?: string;
+      dataUrl?: string;
+    }>;
+    imageAttachments?: Array<{ name?: string; type?: string; dataUrl?: string; size?: number }>;
     failedAttachments?: Array<{ name?: string; type?: string; error?: string }>;
   };
+
   try {
     payload = await request.json();
   } catch {
@@ -71,6 +84,10 @@ Deno.serve(async (request) => {
     .filter((attachment) => attachment && attachment.name)
     .map((attachment) => `Attachment issue: ${attachment.name}${attachment.error ? ` — ${attachment.error}` : ''}`);
 
+  const imageAttachments = (Array.isArray(payload.imageAttachments) ? payload.imageAttachments : [])
+    .filter((attachment) => typeof attachment.dataUrl === 'string' && attachment.dataUrl.startsWith('data:image/'))
+    .slice(0, MAX_IMAGE_COUNT);
+
   const messages = payload.messages
     .map((message) => {
       const content = String(message.content || '').slice(0, MAX_MESSAGE_LENGTH);
@@ -84,21 +101,37 @@ Deno.serve(async (request) => {
   if (!messages.length) return responseJson({ error: 'Empty conversation' }, 400);
 
   const enrichedMessages = [...messages];
-  if (attachmentContext.length || failedAttachmentContext.length) {
+  const lastUserIndex = enrichedMessages.map((message) => message.role).lastIndexOf('user');
+
+  if (attachmentContext.length || failedAttachmentContext.length || imageAttachments.length) {
     const documentBlock = [
-      'The user has uploaded document context for this request. Use the uploaded document content as the primary basis for answering document-related questions.',
+      'The user has uploaded content for this request. Use uploaded document text as the primary basis for document questions and use image attachments for actual visual analysis.',
       ...attachmentContext,
       ...failedAttachmentContext
     ].join('\n\n');
 
-    const lastUserIndex = enrichedMessages.map((message) => message.role).lastIndexOf('user');
     if (lastUserIndex >= 0) {
+      const promptText = enrichedMessages[lastUserIndex].content || '';
+      const multimodalContent = [{ type: 'text', text: promptText ? `${promptText}\n\n${documentBlock}` : documentBlock }];
+      imageAttachments.forEach((attachment) => {
+        multimodalContent.push({
+          type: 'image_url',
+          image_url: { url: attachment.dataUrl }
+        });
+      });
       enrichedMessages[lastUserIndex] = {
         ...enrichedMessages[lastUserIndex],
-        content: `${enrichedMessages[lastUserIndex].content}\n\n${documentBlock}`.slice(0, MAX_MESSAGE_LENGTH)
+        content: multimodalContent
       };
     } else {
-      enrichedMessages.push({ role: 'user', content: documentBlock.slice(0, MAX_MESSAGE_LENGTH) });
+      const multimodalContent = [{ type: 'text', text: documentBlock }];
+      imageAttachments.forEach((attachment) => {
+        multimodalContent.push({
+          type: 'image_url',
+          image_url: { url: attachment.dataUrl }
+        });
+      });
+      enrichedMessages.push({ role: 'user', content: multimodalContent });
     }
   }
 
@@ -113,15 +146,23 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify({
         model: Deno.env.get('OPENROUTER_MODEL') || DEFAULT_MODEL,
-        messages: [{ role: 'system', content: systemPrompt }, ...enrichedMessages],
+        messages: [{ role: 'system', content: systemPrompt }, ...enrichedMessages].map((message) => ({
+          ...message,
+          content: Array.isArray(message.content)
+            ? message.content
+            : String(message.content || '').slice(0, MAX_MESSAGE_LENGTH)
+        })),
         temperature: 0.35,
         max_tokens: 700
       })
     });
+
     if (!providerResponse.ok) return responseJson({ error: 'AI provider unavailable' }, 502);
+
     const data = await providerResponse.json();
     const message = data.choices?.[0]?.message?.content;
     if (!message) return responseJson({ error: 'Empty AI response' }, 502);
+
     return responseJson({ message });
   } catch {
     return responseJson({ error: 'AI provider unavailable' }, 502);

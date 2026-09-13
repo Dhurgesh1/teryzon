@@ -3,3 +3,6 @@ git commit -m "Updated website"
 git push
 
 #git push --force
+
+git commit --allow-empty -m "Redeploy GitHub Pages"
+git push origin main

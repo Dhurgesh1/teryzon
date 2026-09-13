@@ -8,6 +8,8 @@ const MAX_DOCUMENT_CHARS = 20000;
 const MAX_DOCUMENT_PAGES = 100;
 const MAX_ATTACHMENTS = 4;
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1600;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const quickActions = ['What is Teryzon?', 'How does the rover work?', 'Environmental monitoring', 'Explain my data', 'Technology used'];
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -142,6 +144,27 @@ const extractTextAttachment = async (file) => {
   }
   throw new Error('This file type is not supported for document analysis.');
 };
+
+const resizeImageDataUrl = (dataUrl, maxDimension = MAX_IMAGE_DIMENSION) => new Promise((resolve, reject) => {
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth || image.width || 1, image.naturalHeight || image.height || 1));
+    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      resolve(dataUrl);
+      return;
+    }
+    context.drawImage(image, 0, 0, width, height);
+    resolve(canvas.toDataURL('image/jpeg', 0.82));
+  };
+  image.onerror = () => reject(new Error('Unable to read image')); 
+  image.src = dataUrl;
+});
 
 const trimTitle = (value) => {
   const text = String(value || '').trim();
@@ -375,38 +398,72 @@ const boot = () => {
   };
 
   const addPendingAttachments = async (files) => {
-    const validFiles = Array.from(files).filter((file) => file && file.size > 0);
+    const validFiles = Array.from(files)
+      .filter((file) => file && file.size > 0)
+      .filter((file) => file.size <= MAX_FILE_BYTES || file.type.startsWith('image/'));
     const remainingSlots = Math.max(0, MAX_ATTACHMENTS - pendingUploads.length);
     const selected = validFiles.slice(0, remainingSlots);
 
     if (!selected.length) {
       if (validFiles.length > 0) {
-        const message = validFiles.length > MAX_ATTACHMENTS ? `You can upload up to ${MAX_ATTACHMENTS} files at a time.` : 'No valid files were selected.';
+        const message = validFiles.length > MAX_ATTACHMENTS ? `You can upload up to ${MAX_ATTACHMENTS} files at a time.` : 'One or more files were too large to process.';
         window.alert(message);
       }
       return;
     }
 
     const items = await Promise.all(selected.map(async (file) => {
-      const isImage = file.type.startsWith('image/');
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name || '');
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+      const reader = new FileReader();
       const dataUrl = isImage ? await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
         reader.onerror = () => reject(new Error('Unable to read image'));
         reader.readAsDataURL(file);
       }) : '';
 
       try {
-        const extractedText = isImage ? '' : limitText(await extractTextAttachment(file));
+        let finalDataUrl = typeof dataUrl === 'string' && dataUrl ? dataUrl : '';
+        if (isImage && finalDataUrl) {
+          finalDataUrl = await resizeImageDataUrl(finalDataUrl);
+        }
+        if (isImage) {
+          return sanitizeAttachment({
+            id: createId(),
+            name: file.name,
+            type: file.type || 'image',
+            size: file.size,
+            kind: 'image',
+            dataUrl: finalDataUrl,
+            extractedText: '',
+            extractionStatus: 'image-ready'
+          });
+        }
+
+        if (isPdf || isJsonFile(file) || isCsvFile(file) || isTextFile(file) || isDocxFile(file) || isWordFile(file)) {
+          const extractedText = limitText(await extractTextAttachment(file));
+          return sanitizeAttachment({
+            id: createId(),
+            name: file.name,
+            type: file.type || 'file',
+            size: file.size,
+            kind: 'file',
+            dataUrl: '',
+            extractedText,
+            extractionStatus: 'document-ready'
+          });
+        }
+
         return sanitizeAttachment({
           id: createId(),
           name: file.name,
-          type: file.type || (isImage ? 'image' : 'file'),
+          type: file.type || 'file',
           size: file.size,
-          kind: isImage ? 'image' : 'file',
-          dataUrl: typeof dataUrl === 'string' ? dataUrl : '',
-          extractedText,
-          extractionStatus: isImage ? 'image-ready' : 'document-ready'
+          kind: 'file',
+          dataUrl: '',
+          extractedText: '',
+          extractionStatus: 'failed',
+          error: 'This file type is not supported for document analysis.'
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to read this document.';
@@ -415,8 +472,8 @@ const boot = () => {
           name: file.name,
           type: file.type || 'file',
           size: file.size,
-          kind: 'file',
-          dataUrl: '',
+          kind: isImage ? 'image' : 'file',
+          dataUrl: isImage ? (typeof dataUrl === 'string' ? dataUrl : '') : '',
           extractedText: '',
           extractionStatus: 'failed',
           error: message
@@ -441,6 +498,7 @@ const boot = () => {
 
     const sanitizedAttachments = attachments.map((attachment) => sanitizeAttachment(attachment));
     const hasDocumentContext = sanitizedAttachments.some((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
+    const hasImageAttachments = sanitizedAttachments.some((attachment) => attachment.kind === 'image' && attachment.dataUrl);
     const userMessage = {
       role: 'user',
       content: (trimmed || 'Shared attachment(s)').slice(0, MAX_INPUT),
@@ -459,35 +517,65 @@ const boot = () => {
 
     try {
       const payloadMessages = activeSession.messages.slice(-MAX_HISTORY).map(({ role, content, attachments: itemAttachments }) => {
-        const contextParts = [];
+        const textContext = [];
+        const imageContext = [];
         if (Array.isArray(itemAttachments) && itemAttachments.length) {
-          const extractedDocs = itemAttachments.filter((item) => item.extractedText && item.extractionStatus !== 'failed');
-          const failedDocs = itemAttachments.filter((item) => item.error && !item.extractedText);
-          if (extractedDocs.length) {
-            contextParts.push(extractedDocs.map((item) => `Attachment: ${item.name}\n${clampDocumentText(item.extractedText)}`).join('\n\n'));
-          }
-          if (failedDocs.length) {
-            contextParts.push(`Attachment processing issue: ${failedDocs.map((item) => `${item.name}: ${item.error}`).join('; ')}`);
-          }
+          itemAttachments.forEach((item) => {
+            if (item.kind === 'image' && item.dataUrl) {
+              imageContext.push({
+                name: item.name,
+                type: item.type,
+                dataUrl: item.dataUrl
+              });
+            } else if (item.extractedText && item.extractionStatus !== 'failed') {
+              textContext.push(`Attachment: ${item.name}\n${clampDocumentText(item.extractedText)}`);
+            } else if (item.error) {
+              textContext.push(`Attachment issue: ${item.name} — ${item.error}`);
+            }
+          });
         }
-        const combinedContent = [content || '', ...contextParts].filter(Boolean).join('\n\n');
-        return { role, content: combinedContent.slice(0, MAX_INPUT) };
+
+        const combinedContent = [content || '', ...textContext].filter(Boolean).join('\n\n');
+        const cleanMessage = { role, content: combinedContent.slice(0, MAX_INPUT) };
+        return { ...cleanMessage, images: imageContext.slice(0, 4) };
       });
 
       const documentAttachments = sanitizedAttachments.filter((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
+      const imageAttachments = sanitizedAttachments.filter((attachment) => attachment.kind === 'image' && attachment.dataUrl);
       const failedAttachments = sanitizedAttachments.filter((attachment) => attachment.error && !attachment.extractedText);
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: payloadMessages,
-          attachments: documentAttachments.map((attachment) => ({
+          messages: payloadMessages.map(({ role, content, images }) => ({
+            role,
+            content: (images && images.length
+              ? `${content}\n\n[Image attachment included for analysis: ${images.map((image) => image.name).join(', ')}]`
+              : content)
+          })),
+          attachments: [
+            ...documentAttachments.map((attachment) => ({
+              name: attachment.name,
+              type: attachment.type,
+              kind: attachment.kind,
+              size: attachment.size,
+              extractedText: clampDocumentText(attachment.extractedText),
+              extractionStatus: attachment.extractionStatus
+            })),
+            ...imageAttachments.map((attachment) => ({
+              name: attachment.name,
+              type: attachment.type,
+              kind: attachment.kind,
+              size: attachment.size,
+              dataUrl: attachment.dataUrl,
+              extractionStatus: attachment.extractionStatus
+            }))
+          ],
+          imageAttachments: imageAttachments.map((attachment) => ({
             name: attachment.name,
             type: attachment.type,
-            kind: attachment.kind,
-            size: attachment.size,
-            extractedText: clampDocumentText(attachment.extractedText),
-            extractionStatus: attachment.extractionStatus
+            dataUrl: attachment.dataUrl,
+            size: attachment.size
           })),
           failedAttachments: failedAttachments.map((attachment) => ({
             name: attachment.name,
@@ -506,6 +594,9 @@ const boot = () => {
       lastFailed = null;
       if (hasDocumentContext && !data.message.toLowerCase().includes('document')) {
         console.info('Document context sent successfully to Teryzon AI.');
+      }
+      if (hasImageAttachments && !data.message.toLowerCase().includes('image')) {
+        console.info('Image context sent successfully to Teryzon AI.');
       }
     } catch (error) {
       const userMessageText = (error instanceof Error && error.message) || 'Could not process the uploaded document.';
