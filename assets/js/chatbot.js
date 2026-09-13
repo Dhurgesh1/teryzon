@@ -10,6 +10,7 @@ const MAX_ATTACHMENTS = 4;
 const MAX_FILE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_PDF_RENDER_PAGES = 3;
 const quickActions = ['What is Teryzon?', 'How does the rover work?', 'Environmental monitoring', 'Explain my data', 'Technology used'];
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -78,13 +79,14 @@ const sanitizeAttachment = (attachment) => ({
   kind: attachment.kind || (attachment.type && attachment.type.startsWith('image/') ? 'image' : 'file'),
   dataUrl: attachment.dataUrl || '',
   extractedText: attachment.extractedText || '',
+  pageImages: Array.isArray(attachment.pageImages) ? attachment.pageImages.slice(0, MAX_PDF_RENDER_PAGES).filter((url) => typeof url === 'string' && url.startsWith('data:image/')) : [],
   extractionStatus: attachment.extractionStatus || '',
   error: attachment.error || ''
 });
 
 const stripAttachmentDataForStorage = (attachment = {}) => {
-  const { dataUrl, ...rest } = attachment;
-  return rest;
+  const { dataUrl, pageImages, ...rest } = attachment;
+  return { ...rest, pageImages: Array.isArray(pageImages) ? pageImages.slice(0, MAX_PDF_RENDER_PAGES) : [] };
 };
 
 const buildMultimodalMessageContent = ({ role, content, attachments = [] }) => {
@@ -100,6 +102,15 @@ const buildMultimodalMessageContent = ({ role, content, attachments = [] }) => {
         image_url: { url: attachment.dataUrl }
       });
       return;
+    }
+
+    if (attachment.kind === 'pdf' && Array.isArray(attachment.pageImages) && attachment.pageImages.length) {
+      attachment.pageImages.slice(0, MAX_PDF_RENDER_PAGES).forEach((imageUrl) => {
+        mediaSegments.push({
+          type: 'image_url',
+          image_url: { url: imageUrl }
+        });
+      });
     }
 
     if (attachment.extractedText && attachment.extractionStatus !== 'failed') {
@@ -173,6 +184,34 @@ const extractDocxText = async (file) => {
     throw new Error('This DOCX file is empty or could not be read.');
   }
   return result.value;
+};
+
+const renderPdfPageImages = async (file, maxPages = MAX_PDF_RENDER_PAGES) => {
+  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs');
+  if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.mjs';
+  }
+
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const images = [];
+
+  for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, maxPages); pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) continue;
+    canvas.width = Math.min(viewport.width, MAX_IMAGE_DIMENSION);
+    canvas.height = Math.min(viewport.height, MAX_IMAGE_DIMENSION);
+    const scaledViewport = page.getViewport({ scale: Math.min(1.5, MAX_IMAGE_DIMENSION / Math.max(viewport.width, viewport.height) || 1) });
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+    await page.render({ canvasContext: context, viewport: scaledViewport }).promise;
+    images.push(canvas.toDataURL('image/jpeg', 0.8));
+  }
+
+  return images;
 };
 
 const extractTextAttachment = async (file) => {
@@ -497,7 +536,38 @@ const boot = () => {
           });
         }
 
-        if (isPdf || isJsonFile(file) || isCsvFile(file) || isTextFile(file) || isDocxFile(file) || isWordFile(file)) {
+        if (isPdf) {
+          try {
+            const extractedText = limitText(await extractPdfText(file));
+            return sanitizeAttachment({
+              id: createId(),
+              name: file.name,
+              type: file.type || 'application/pdf',
+              size: file.size,
+              kind: 'pdf',
+              dataUrl: '',
+              extractedText,
+              pageImages: [],
+              extractionStatus: 'document-ready'
+            });
+          } catch (pdfError) {
+            const pageImages = await renderPdfPageImages(file, MAX_PDF_RENDER_PAGES);
+            return sanitizeAttachment({
+              id: createId(),
+              name: file.name,
+              type: file.type || 'application/pdf',
+              size: file.size,
+              kind: 'pdf',
+              dataUrl: '',
+              extractedText: '',
+              pageImages,
+              extractionStatus: 'visual-fallback',
+              error: pdfError instanceof Error ? pdfError.message : 'This PDF could not be processed as text.'
+            });
+          }
+        }
+
+        if (isJsonFile(file) || isCsvFile(file) || isTextFile(file) || isDocxFile(file) || isWordFile(file)) {
           const extractedText = limitText(await extractTextAttachment(file));
           return sanitizeAttachment({
             id: createId(),
