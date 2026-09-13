@@ -80,6 +80,7 @@ const sanitizeAttachment = (attachment) => ({
   dataUrl: attachment.dataUrl || '',
   extractedText: attachment.extractedText || '',
   pageImages: Array.isArray(attachment.pageImages) ? attachment.pageImages.slice(0, MAX_PDF_RENDER_PAGES).filter((url) => typeof url === 'string' && url.startsWith('data:image/')) : [],
+  tableData: attachment.tableData || null,
   extractionStatus: attachment.extractionStatus || '',
   error: attachment.error || ''
 });
@@ -267,10 +268,90 @@ const trimTitle = (value) => {
   return text ? text.slice(0, 28) : 'New chat';
 };
 
+const parseTableData = (value) => {
+  if (!value) return null;
+
+  if (Array.isArray(value)) {
+    if (!value.length) return null;
+    const rows = value.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry));
+    if (!rows.length) return null;
+    const headers = Array.from(new Set(rows.flatMap((entry) => Object.keys(entry))));
+    return { headers, rows: rows.map((entry) => headers.map((header) => entry[header] ?? '')) };
+  }
+
+  if (typeof value === 'object') {
+    const entries = Array.isArray(value) ? value : [value];
+    if (!entries.length) return null;
+    const headers = Array.from(new Set(entries.flatMap((entry) => Object.keys(entry || {}))));
+    return { headers, rows: entries.map((entry) => headers.map((header) => entry?.[header] ?? '')) };
+  }
+
+  const lines = String(value).split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length < 2) return null;
+
+  const records = [];
+  const parseCsvLine = (line) => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '"') {
+        if (inQuotes && line[index + 1] === '"') {
+          current += '"';
+          index += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result.map((cell) => cell.trim());
+  };
+
+  const [headerLine, ...rowsLines] = lines;
+  const headers = parseCsvLine(headerLine);
+  rowsLines.slice(0, 8).forEach((line) => {
+    const values = parseCsvLine(line);
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header || `col_${index + 1}`] = values[index] ?? '';
+    });
+    records.push(row);
+  });
+
+  if (!records.length) return null;
+  return { headers, rows: records.map((row) => headers.map((header) => row[header] ?? '')) };
+};
+
+const renderTableView = (tableData) => {
+  if (!tableData || !Array.isArray(tableData.rows) || !tableData.rows.length) return '';
+  const headers = Array.isArray(tableData.headers) && tableData.headers.length ? tableData.headers : Array.from({ length: Math.max(...tableData.rows.map((row) => row.length), 1) }, (_, index) => `Column ${index + 1}`);
+  const rows = tableData.rows.slice(0, 8).map((row) => {
+    const cells = row.map((cell) => `<td>${escapeHtml(String(cell ?? ''))}</td>`).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  const headerCells = headers.map((header) => `<th>${escapeHtml(String(header))}</th>`).join('');
+  return `
+    <div class="teryzon-chatbot-table-wrap">
+      <table class="teryzon-chatbot-table">
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+};
+
 const renderAttachmentChip = (attachment) => {
   const preview = attachment.kind === 'image' && attachment.dataUrl
     ? `<img src="${attachment.dataUrl}" alt="${escapeHtml(attachment.name)}">`
-    : `<span class="teryzon-chatbot-file-badge">${attachment.kind === 'image' ? 'IMG' : 'FILE'}</span>`;
+    : `<span class="teryzon-chatbot-file-badge">${attachment.kind === 'image' ? 'IMG' : (attachment.kind === 'pdf' ? 'PDF' : 'FILE')}</span>`;
 
   return `
     <div class="teryzon-chatbot-attachment-chip" data-attachment-id="${attachment.id}">
@@ -285,10 +366,12 @@ const renderAttachmentChip = (attachment) => {
 
 const renderMessage = (message) => {
   const attachments = (message.attachments || []).map(renderAttachmentChip).join('');
+  const tableData = (message.attachments || []).map((attachment) => attachment.tableData).find(Boolean) || null;
   return `
     <article class="teryzon-chatbot-message ${message.role === 'user' ? 'is-user' : ''}">
       <div class="teryzon-chatbot-bubble">
         ${renderMarkdown(message.content || '')}
+        ${tableData ? renderTableView(tableData) : ''}
         ${attachments ? `<div class="teryzon-chatbot-attachment-row">${attachments}</div>` : ''}
         <small class="teryzon-chatbot-time">${message.time || timestamp()}</small>
         ${message.error ? '<button class="teryzon-chatbot-quick" data-chat-retry type="button">Retry</button>' : ''}
@@ -569,6 +652,7 @@ const boot = () => {
 
         if (isJsonFile(file) || isCsvFile(file) || isTextFile(file) || isDocxFile(file) || isWordFile(file)) {
           const extractedText = limitText(await extractTextAttachment(file));
+          const tableData = parseTableData(isJsonFile(file) ? JSON.parse(extractedText) : extractedText);
           return sanitizeAttachment({
             id: createId(),
             name: file.name,
@@ -577,6 +661,7 @@ const boot = () => {
             kind: 'file',
             dataUrl: '',
             extractedText,
+            tableData,
             extractionStatus: 'document-ready'
           });
         }

@@ -417,6 +417,33 @@
   font-size: .58rem;
 }
 
+.teryzon-chatbot-table-wrap {
+  margin-top: 10px;
+  max-height: 220px;
+  overflow: auto;
+  width: 100%;
+}
+
+.teryzon-chatbot-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.teryzon-chatbot-table th,
+.teryzon-chatbot-table td {
+  border: 1px solid var(--teryzon-chat-line);
+  font-size: .72rem;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.teryzon-chatbot-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--teryzon-chat-ink);
+  font-weight: 700;
+}
+
 .teryzon-chatbot-upload-bar {
   align-items: center;
   border-top: 1px solid var(--teryzon-chat-line);
