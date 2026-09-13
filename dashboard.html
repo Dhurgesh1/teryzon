@@ -1274,6 +1274,9 @@
       const systemIsLight = window.matchMedia('(prefers-color-scheme: light)').matches;
       const resolvedTheme = storedTheme === 'system' ? (systemIsLight ? 'light' : 'dark') : storedTheme;
       document.body.setAttribute('data-theme', resolvedTheme);
+      document.documentElement.setAttribute('data-theme', resolvedTheme);
+      document.documentElement.setAttribute('data-theme-preference', storedTheme);
+      document.documentElement.style.colorScheme = resolvedTheme;
       themeSelect.value = storedTheme;
     };
 
@@ -1543,6 +1546,14 @@
       const value = event.target.value;
       localStorage.setItem(preferenceKeys.theme, value);
       applyThemePreference();
+      window.dispatchEvent(new CustomEvent('themechange', {
+        detail: {
+          theme: value,
+          resolvedTheme: value === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+            : value
+        }
+      }));
     });
 
     const setNotificationToggle = (button, enabled) => {

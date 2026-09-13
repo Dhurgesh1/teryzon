@@ -15,6 +15,11 @@ const applyTheme = (theme = getStoredTheme()) => {
   document.body.dataset.theme = resolvedTheme;
   document.documentElement.dataset.themePreference = theme;
   document.documentElement.dataset.theme = resolvedTheme;
+  document.documentElement.style.colorScheme = resolvedTheme;
+  window.dispatchEvent(new CustomEvent('themechange', {
+    detail: { theme, resolvedTheme }
+  }));
+
   const themeControl = document.querySelector('#theme-control');
   if (themeControl) {
     if (themeControl.matches('select')) {
