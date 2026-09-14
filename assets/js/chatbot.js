@@ -560,6 +560,15 @@ const boot = () => {
   };
 
   const toggleSidebar = () => {
+    if (window.innerWidth <= 720) {
+      const isOpen = panel.classList.toggle('is-mobile-sidebar-open');
+      sidebarToggle.setAttribute('aria-label', isOpen ? 'Hide chat list' : 'Show chat list');
+      sidebarToggle.innerHTML = isOpen
+        ? icon('<path d="M15 18l-6-6 6-6"/>')
+        : icon('<path d="M9 18l6-6-6-6"/>');
+      return;
+    }
+
     const collapsed = panel.classList.toggle('is-sidebar-collapsed');
     sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand chat list' : 'Collapse chat list');
     sidebarToggle.innerHTML = collapsed

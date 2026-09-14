@@ -613,24 +613,119 @@
   30% { opacity: 1; transform: translateY(-3px); }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   .teryzon-chatbot-launcher {
     bottom: max(18px, env(safe-area-inset-bottom));
     right: max(18px, env(safe-area-inset-right));
   }
 
   .teryzon-chatbot-panel {
-    border-radius: 0;
-    bottom: 0;
-    height: 100dvh;
-    max-height: 100dvh;
-    right: 0;
-    width: 100vw;
+    border-radius: 18px;
+    bottom: 82px;
+    display: flex;
+    flex-direction: column;
+    height: min(76dvh, 720px);
+    left: 12px;
+    max-height: calc(100dvh - 100px);
+    right: 12px;
+    width: auto;
   }
 
   .teryzon-chatbot-sidebar {
-    flex-basis: 68%;
-    min-width: 68%;
+    border-bottom: 1px solid var(--teryzon-chat-line);
+    border-right: 0;
+    display: none;
+    flex-basis: auto;
+    height: 0;
+    max-height: 0;
+    min-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    width: 100%;
+    transition: height .22s ease, opacity .22s ease, visibility .22s ease;
+  }
+
+  .teryzon-chatbot-panel.is-mobile-sidebar-open .teryzon-chatbot-sidebar {
+    display: flex;
+    height: min(38vh, 260px);
+    max-height: min(38vh, 260px);
+    min-height: 160px;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .teryzon-chatbot-window {
+    min-height: 0;
+  }
+
+  .teryzon-chatbot-header {
+    gap: 8px;
+    padding: 12px 10px 12px 8px;
+  }
+
+  .teryzon-chatbot-heading strong {
+    font-size: .82rem;
+  }
+
+  .teryzon-chatbot-messages {
+    padding: 14px 12px 8px;
+  }
+
+  .teryzon-chatbot-bubble {
+    max-width: 86%;
+  }
+
+  .teryzon-chatbot-attachment-chip {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .teryzon-chatbot-upload-bar,
+  .teryzon-chatbot-quick-wrap,
+  .teryzon-chatbot-form {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .teryzon-chatbot-form {
+    gap: 6px;
+  }
+
+  .teryzon-chatbot-upload-trigger,
+  .teryzon-chatbot-send {
+    flex-basis: 40px;
+    height: 40px;
+    width: 40px;
+  }
+
+  .teryzon-chatbot-quick {
+    font-size: .68rem;
+    padding: 6px 9px;
+  }
+}
+
+@media (max-width: 420px) {
+  .teryzon-chatbot-panel {
+    border-radius: 16px;
+    bottom: 74px;
+    left: 8px;
+    right: 8px;
+    height: min(80dvh, 620px);
+  }
+
+  .teryzon-chatbot-sidebar {
+    flex-basis: 70%;
+    min-width: 70%;
+    max-width: 70%;
+  }
+
+  .teryzon-chatbot-header .teryzon-chatbot-button {
+    width: 28px;
+  }
+
+  .teryzon-chatbot-input {
+    font-size: .82rem;
   }
 }
 
