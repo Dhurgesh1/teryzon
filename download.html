@@ -1,237 +1,1478 @@
-
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#000000">
-  <title>Download Teryzon App | Teryzon</title>
-  <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png?v=4">
-  <link rel="stylesheet" href="assets/css/site.css">
-  <link rel="stylesheet" href="assets/css/theme.css">
-  <script src="assets/js/theme-early.js"></script>
+  <meta name="theme-color" content="#050403">
+
+  <link rel="icon" type="image/png" href="images/Horizons mini logo (1).png">
+
+  <title>Download Teryzon | Explore. Measure. Understand. Restore.</title>
+
   <style>
+
+    /* =========================================================
+       TERYZON DOWNLOAD
+       Premium product download experience
+    ========================================================= */
+
     :root {
-      --panel: rgba(11, 8, 7, 0.92);
-      --panel-alt: rgba(27, 18, 15, 0.9);
-      --glow: rgba(175, 83, 59, 0.3);
+      --bg:#f4efe9;
+      --bg-2:#fbf7f3;
+      --panel:rgba(255,255,255,.74);
+      --panel-solid:#fffaf7;
+      --text:#1f1a17;
+      --muted:#5d5854;
+      --dim:#7d736d;
+      --accent:#d26d4a;
+      --accent-light:#e79372;
+      --line:rgba(31,26,23,.08);
+      --line-accent:rgba(210,109,74,.2);
+      --soft-shadow:rgba(62,41,32,.12);
+      --max:1180px;
     }
 
-    body { min-height: 100vh; }
-    main { padding: 64px 0 100px; }
-    .download-shell { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
-    .download-card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 28px;
-      padding: 40px 30px;
-      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(175, 83, 59, 0.12);
-      position: relative;
-      overflow: hidden;
+    body.download-page {
+      --bg:#f4efe9;
+      --bg-2:#fbf7f3;
+      --panel:rgba(255,255,255,.74);
+      --panel-solid:#fffaf7;
+      --text:#1f1a17;
+      --muted:#5d5854;
+      --dim:#7d736d;
+      --accent:#d26d4a;
+      --accent-light:#e79372;
+      --line:rgba(31,26,23,.08);
+      --line-accent:rgba(210,109,74,.2);
+      --soft-shadow:rgba(62,41,32,.12);
     }
-    .download-card::before {
-      content: "";
-      position: absolute;
-      inset: -30% auto auto -10%;
-      width: 220px;
-      height: 220px;
-      background: radial-gradient(circle, rgba(175, 83, 59, 0.18), transparent 68%);
-      pointer-events: none;
-      animation: pulseGlow 7s ease-in-out infinite alternate;
+
+    html[data-theme="light"] body.download-page {
+      --bg:#f4efe9;
+      --bg-2:#fbf7f3;
+      --panel:rgba(255,255,255,.74);
+      --panel-solid:#fffaf7;
+      --text:#1f1a17;
+      --muted:#5d5854;
+      --dim:#7d736d;
+      --accent:#d26d4a;
+      --accent-light:#e79372;
+      --line:rgba(31,26,23,.08);
+      --line-accent:rgba(210,109,74,.2);
+      --soft-shadow:rgba(62,41,32,.12);
     }
-    .eyebrow { color: var(--terracotta); font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
-    h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); letter-spacing: -.06em; line-height: 1; margin: 12px 0 18px; }
-    .download-copy { color: var(--muted); font-size: 1.04rem; line-height: 1.8; margin-bottom: 32px; max-width: 620px; }
-    .download-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
-    .button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      font-weight: 700;
-      padding: 14px 22px;
-      text-decoration: none;
-      transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+
+    html[data-theme="dark"] body.download-page {
+      --bg:#050403;
+      --bg-2:#090706;
+      --panel:rgba(18,13,11,.72);
+      --panel-solid:#100c0a;
+      --text:#f4eee9;
+      --muted:#9f958f;
+      --dim:#625953;
+      --accent:#af533b;
+      --accent-light:#d2765d;
+      --line:rgba(255,255,255,.08);
+      --line-accent:rgba(175,83,59,.45);
+      --soft-shadow:rgba(0,0,0,.38);
     }
-    .button:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
-    .button-primary {
-      background: var(--terracotta);
-      color: #000;
-      box-shadow: 0 10px 28px rgba(175, 83, 59, 0.28);
+
+    * {
+      box-sizing:border-box;
     }
-    .button-secondary {
-      border: 1px solid var(--line);
-      color: var(--ink);
-      background: transparent;
+
+    html {
+      scroll-behavior:smooth;
     }
-    .platform-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 18px;
-      margin-top: 34px;
+
+    body {
+      margin:0;
+      background:
+        radial-gradient(circle at top left, rgba(210,109,74,.12), transparent 18%),
+        radial-gradient(circle at bottom right, rgba(101,177,198,.12), transparent 20%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      color:var(--text);
+      font-family:"Trebuchet MS",Arial,sans-serif;
+      overflow-x:hidden;
     }
-    .platform-card {
-      background: var(--panel-alt);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 22px 18px;
-      position: relative;
-      overflow: hidden;
-      text-decoration: none;
-      color: inherit;
-      display: block;
-      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
-      animation: riseIn .6s ease both;
+
+    body.download-page {
+      background:
+        radial-gradient(circle at top left, rgba(210,109,74,.14), transparent 18%),
+        radial-gradient(circle at bottom right, rgba(101,177,198,.12), transparent 20%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      color:var(--text);
     }
-    .platform-card:nth-child(2) { animation-delay: .1s; }
-    .platform-card:nth-child(3) { animation-delay: .2s; }
-    .platform-card:nth-child(4) { animation-delay: .3s; }
-    .platform-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(175, 83, 59, 0.8);
-      box-shadow: 0 18px 30px rgba(0,0,0,0.18);
+
+    html[data-theme="dark"] body.download-page {
+      background:
+        radial-gradient(circle at top left, rgba(175,83,59,.14), transparent 18%),
+        radial-gradient(circle at bottom right, rgba(79,197,221,.08), transparent 22%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      color:var(--text);
     }
-    .platform-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.04);
-      color: var(--terracotta);
-      font-size: 1.5rem;
-      margin-bottom: 16px;
-      border: 1px solid rgba(175, 83, 59, 0.3);
+
+    a {
+      color:inherit;
+      text-decoration:none;
     }
-    .platform-card h3 {
-      margin: 0 0 6px;
-      font-size: 1.2rem;
-      color: var(--ink);
+
+    button {
+      font:inherit;
     }
-    .platform-card p {
-      margin: 0 0 18px;
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: .94rem;
+
+    /* =========================================================
+       BACKGROUND
+    ========================================================= */
+
+    .background {
+      position:fixed;
+      inset:0;
+      z-index:-5;
+      overflow:hidden;
+      pointer-events:none;
     }
-    .platform-card .card-link {
-      display: inline-block;
-      color: var(--ink);
-      font-weight: 700;
-      text-decoration: none;
-      border-bottom: 1px solid rgba(175, 83, 59, 0.8);
-      padding-bottom: 2px;
+
+    .grid {
+      position:absolute;
+      inset:-100px;
+      background-image:
+        linear-gradient(rgba(31,26,23,.04) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(31,26,23,.04) 1px,transparent 1px);
+      background-size:60px 60px;
+      mask-image:linear-gradient(
+        to bottom,
+        black 0%,
+        rgba(0,0,0,.82) 35%,
+        transparent 85%
+      );
+      transform:perspective(700px) rotateX(58deg) scale(1.5);
+      transform-origin:center top;
     }
-    .meta-row {
-      color: var(--muted);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 18px;
-      margin-top: 30px;
-      font-size: .8rem;
-      letter-spacing: .04em;
-      text-transform: uppercase;
+
+    .glow {
+      position:absolute;
+      width:700px;
+      height:700px;
+      border-radius:50%;
+      background:radial-gradient(
+        circle,
+        rgba(210,109,74,.14),
+        rgba(210,109,74,.04) 32%,
+        transparent 70%
+      );
+      top:-300px;
+      left:50%;
+      transform:translateX(-50%);
     }
-    @keyframes pulseGlow {
-      0% { transform: scale(0.98); opacity: 0.6; }
-      100% { transform: scale(1.12); opacity: 1; }
+
+    .noise {
+      position:absolute;
+      inset:0;
+      opacity:.04;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
-    @keyframes riseIn {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
+
+    /* =========================================================
+       HEADER
+    ========================================================= */
+
+    header {
+      height:82px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      position:relative;
+      z-index:10;
+      backdrop-filter:blur(16px);
+      background:rgba(255,255,255,.3);
     }
-    @media (max-width: 980px) {
-      .platform-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    html[data-theme="dark"] body.download-page header {
+      background:rgba(5,4,3,.7);
     }
-    @media (max-width: 560px) {
-      .platform-grid { grid-template-columns: 1fr; }
+
+    .nav {
+      width:min(var(--max),calc(100% - 48px));
+      margin:auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
     }
-    @media (max-width: 560px) {
-      .download-card { padding: 30px 20px; }
-      .download-actions { flex-direction: column; align-items: stretch; }
-      .button { width: 100%; }
+
+    .brand img {
+      width:175px;
+      height:auto;
+      display:block;
     }
+
+    .nav-right {
+      display:flex;
+      align-items:center;
+      gap:25px;
+    }
+
+    .nav-link {
+      color:var(--muted);
+      font-size:.78rem;
+      transition:color .2s;
+    }
+
+    .nav-link:hover {
+      color:var(--text);
+    }
+
+    .nav-button {
+      border:1px solid var(--line);
+      padding:9px 15px;
+      font-size:.72rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      transition:
+        background .2s,
+        border-color .2s;
+    }
+
+    .nav-button:hover {
+      background:var(--accent);
+      border-color:var(--accent);
+    }
+
+    /* =========================================================
+       HERO
+    ========================================================= */
+
+    .hero {
+      min-height:720px;
+      max-width:var(--max);
+      width:calc(100% - 48px);
+      margin:auto;
+
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      align-items:center;
+      gap:60px;
+
+      padding:90px 0 80px;
+    }
+
+    .hero-copy {
+      animation:heroIn .9s ease both;
+    }
+
+    .eyebrow {
+      display:inline-flex;
+      align-items:center;
+      gap:9px;
+
+      color:var(--accent-light);
+      font-size:.68rem;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
+
+    .eyebrow-dot {
+      width:7px;
+      height:7px;
+      background:var(--accent);
+      border-radius:50%;
+      box-shadow:0 0 20px rgba(175,83,59,.7);
+      animation:pulse 2s infinite;
+    }
+
+    h1 {
+      font-size:clamp(4rem,7vw,7.2rem);
+      line-height:.86;
+      letter-spacing:-.075em;
+      margin:24px 0 30px;
+      font-weight:700;
+    }
+
+    h1 span {
+      color:var(--accent);
+    }
+
+    .hero-description {
+      max-width:520px;
+      color:var(--muted);
+      font-size:1.02rem;
+      line-height:1.8;
+    }
+
+    /* =========================================================
+       HERO VISUAL
+    ========================================================= */
+
+    .visual {
+      position:relative;
+      height:520px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      animation:visualIn 1s .15s ease both;
+    }
+
+    .visual::before {
+      content:"";
+      position:absolute;
+      width:420px;
+      height:420px;
+      border:1px solid rgba(210,109,74,.15);
+      border-radius:50%;
+      animation:rotate 22s linear infinite;
+    }
+
+    .visual::after {
+      content:"";
+      position:absolute;
+      width:320px;
+      height:320px;
+      border:1px dashed rgba(210,109,74,.15);
+      border-radius:50%;
+      animation:rotateReverse 18s linear infinite;
+    }
+
+    .orbit-dot {
+      position:absolute;
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 20px rgba(210,109,74,.7);
+      animation:orbit 9s linear infinite;
+    }
+
+    .orbit-dot.two {
+      animation-duration:13s;
+      animation-delay:-4s;
+      width:6px;
+      height:6px;
+    }
+
+    .device {
+      position:relative;
+      z-index:2;
+      width:min(100%, 340px);
+      height:420px;
+      padding:22px;
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.4));
+      box-shadow:
+        0 30px 70px rgba(47,31,24,.12),
+        inset 0 1px 0 rgba(255,255,255,.7);
+      backdrop-filter:blur(18px);
+      transform:rotateY(-8deg) rotateX(3deg);
+      overflow:hidden;
+    }
+
+    html[data-theme="dark"] body.download-page .device {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow:
+        0 30px 70px rgba(0,0,0,.42),
+        inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    html[data-theme="dark"] body.download-page .telemetry-card {
+      background:rgba(255,255,255,.03);
+    }
+
+    .device::before {
+      content:"";
+      position:absolute;
+      inset:auto -30% -25% 30%;
+      height:180px;
+      background:radial-gradient(circle, rgba(210,109,74,.18), rgba(210,109,74,0) 62%);
+      border-radius:50%;
+    }
+
+    .device-top {
+      height:42px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      padding:0 12px;
+      gap:7px;
+    }
+
+    .device-dot {
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:rgba(31,26,23,.25);
+    }
+
+    .device-screen {
+      position:relative;
+      height:calc(100% - 42px);
+      padding:22px 18px 18px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+
+    .screen-label {
+      color:var(--dim);
+      font-size:.62rem;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      margin-bottom:18px;
+    }
+
+    .screen-value {
+      font-size:2.4rem;
+      line-height:1;
+      letter-spacing:-.08em;
+      margin:0 0 10px;
+      color:var(--text);
+    }
+
+    .screen-value span {
+      display:block;
+      color:var(--accent);
+      font-size:1rem;
+      letter-spacing:0;
+      margin-top:8px;
+    }
+
+    .telemetry {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:8px;
+    }
+
+    .telemetry-card {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.42);
+      border-radius:16px;
+      padding:14px 12px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
+    }
+
+    .telemetry-name {
+      color:var(--dim);
+      font-size:.58rem;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+
+    .telemetry-number {
+      font-size:1.1rem;
+      margin-top:8px;
+      color:var(--text);
+    }
+
+    .graph {
+      position:relative;
+      height:92px;
+      margin-top:18px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      overflow:hidden;
+      background:linear-gradient(180deg, rgba(210,109,74,.08), rgba(101,177,198,.04));
+    }
+
+    .graph svg {
+      width:100%;
+      height:100%;
+    }
+
+    .scan-line {
+      position:absolute;
+      top:0;
+      bottom:0;
+      width:2px;
+      background:linear-gradient(180deg, transparent, var(--accent), transparent);
+      box-shadow:0 0 12px rgba(210,109,74,.7);
+      animation:scan 3s linear infinite;
+    }
+
+    /* =========================================================
+       DOWNLOAD AREA
+    ========================================================= */
+
+    .download-section {
+      max-width:var(--max);
+      width:calc(100% - 48px);
+      margin:0 auto;
+      padding:60px 0 120px;
+    }
+
+    .download-header {
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      margin-bottom:25px;
+    }
+
+    .download-header h2 {
+      font-size:2rem;
+      letter-spacing:-.04em;
+      margin:0;
+    }
+
+    .download-header p {
+      color:var(--muted);
+      font-size:.82rem;
+      margin:0;
+    }
+
+    /* =========================================================
+       DOWNLOAD CARD
+    ========================================================= */
+
+    .download-box {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.42);
+      backdrop-filter:blur(20px);
+      padding:10px;
+      box-shadow:0 30px 80px rgba(62,41,32,.08);
+    }
+
+    html[data-theme="dark"] body.download-page .download-box {
+      background:rgba(12,9,8,.75);
+      box-shadow:0 30px 80px rgba(0,0,0,.35);
+    }
+
+    .download-inner {
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.12);
+      padding:35px;
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:35px;
+      align-items:center;
+    }
+
+    html[data-theme="dark"] body.download-page .download-inner {
+      background:rgba(0,0,0,.08);
+    }
+
+    .product-row {
+      display:flex;
+      align-items:center;
+      gap:18px;
+    }
+
+    .product-icon {
+      width:65px;
+      height:65px;
+      border:1px solid var(--line-accent);
+      background:var(--accent-soft);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+    }
+
+    .product-icon img {
+      width:42px;
+      height:42px;
+      object-fit:contain;
+    }
+
+    .product-name {
+      font-size:1.2rem;
+      font-weight:700;
+    }
+
+    .product-subtitle {
+      color:var(--muted);
+      font-size:.78rem;
+      margin-top:3px;
+    }
+
+    .version {
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      color:#91a096;
+      font-size:.66rem;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      margin-top:18px;
+    }
+
+    .version-dot {
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:#718776;
+      box-shadow:0 0 12px rgba(113,135,118,.5);
+    }
+
+    /* =========================================================
+       OS SELECTOR
+    ========================================================= */
+
+    .os-selector {
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:8px;
+      margin-top:35px;
+    }
+
+    .os {
+      cursor:pointer;
+      border:1px solid var(--line);
+      background:transparent;
+      color:var(--muted);
+      padding:16px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      transition:
+        background .2s,
+        color .2s,
+        border-color .2s,
+        transform .2s;
+    }
+
+    .os svg {
+      width:18px;
+      height:18px;
+    }
+
+    .os:hover {
+      border-color:var(--line-accent);
+      color:var(--text);
+      transform:translateY(-2px);
+    }
+
+    .os.active {
+      background:var(--accent);
+      border-color:var(--accent);
+      color:white;
+    }
+
+    .download-action {
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+    }
+
+    .download-main {
+      min-width:210px;
+      border:1px solid var(--accent);
+      background:var(--accent);
+      color:white;
+      padding:17px 22px;
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+
+      cursor:pointer;
+
+      font-size:.75rem;
+      font-weight:700;
+      letter-spacing:.1em;
+      text-transform:uppercase;
+
+      transition:
+        background .25s,
+        color .25s,
+        transform .25s,
+        box-shadow .25s;
+    }
+
+    .download-main:hover {
+      background:transparent;
+      color:var(--accent-light);
+      transform:translateY(-3px);
+      box-shadow:0 15px 40px rgba(175,83,59,.15);
+    }
+
+    .download-main svg {
+      width:17px;
+      height:17px;
+    }
+
+    .file-info {
+      color:var(--dim);
+      font-size:.65rem;
+      margin-top:10px;
+      text-align:right;
+    }
+
+    /* =========================================================
+       LOWER FEATURES
+    ========================================================= */
+
+    .features {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:1px;
+      background:var(--line);
+      margin-top:55px;
+      border:1px solid var(--line);
+    }
+
+    .feature {
+      background:rgba(255,255,255,.2);
+      padding:28px;
+      position:relative;
+      overflow:hidden;
+      transition:background .3s;
+    }
+
+    html[data-theme="dark"] body.download-page .feature {
+      background:var(--bg);
+    }
+
+    .feature:hover {
+      background:var(--panel-solid);
+    }
+
+    .feature-number {
+      color:var(--accent);
+      font-size:.65rem;
+      letter-spacing:.15em;
+    }
+
+    .feature h3 {
+      font-size:.95rem;
+      margin:15px 0 7px;
+    }
+
+    .feature p {
+      color:var(--muted);
+      font-size:.76rem;
+      line-height:1.7;
+      margin:0;
+    }
+
+    /* =========================================================
+       FOOTER
+    ========================================================= */
+
+    footer {
+      border-top:1px solid var(--line);
+      padding:30px 0;
+    }
+
+    .footer-inner {
+      width:min(var(--max),calc(100% - 48px));
+      margin:auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .footer-inner span {
+      color:var(--dim);
+      font-size:.7rem;
+    }
+
+    .back {
+      color:var(--muted);
+      font-size:.72rem;
+      transition:color .2s;
+    }
+
+    .back:hover {
+      color:var(--accent);
+    }
+
+    /* =========================================================
+       ANIMATIONS
+    ========================================================= */
+
+    @keyframes heroIn {
+      from {
+        opacity:0;
+        transform:translateY(25px);
+      }
+      to {
+        opacity:1;
+        transform:none;
+      }
+    }
+
+    @keyframes visualIn {
+      from {
+        opacity:0;
+        transform:scale(.94);
+      }
+      to {
+        opacity:1;
+        transform:scale(1);
+      }
+    }
+
+    @keyframes pulse {
+      0%,100% {
+        opacity:.5;
+        transform:scale(.8);
+      }
+      50% {
+        opacity:1;
+        transform:scale(1.15);
+      }
+    }
+
+    @keyframes rotate {
+      to {
+        transform:rotate(360deg);
+      }
+    }
+
+    @keyframes rotateReverse {
+      to {
+        transform:rotate(-360deg);
+      }
+    }
+
+    @keyframes orbit {
+      from {
+        transform:rotate(0deg) translateX(215px) rotate(0deg);
+      }
+      to {
+        transform:rotate(360deg) translateX(215px) rotate(-360deg);
+      }
+    }
+
+    @keyframes scan {
+      from {
+        left:-5%;
+      }
+      to {
+        left:105%;
+      }
+    }
+
+    /* =========================================================
+       MOBILE
+    ========================================================= */
+
+    @media(max-width:850px) {
+
+      .hero {
+        grid-template-columns:1fr;
+        text-align:center;
+        padding-top:75px;
+      }
+
+      .hero-description {
+        margin:auto;
+      }
+
+      .eyebrow {
+        justify-content:center;
+      }
+
+      .visual {
+        height:450px;
+      }
+
+      .download-inner {
+        grid-template-columns:1fr;
+      }
+
+      .download-action {
+        align-items:stretch;
+      }
+
+      .download-main {
+        width:100%;
+      }
+
+      .file-info {
+        text-align:center;
+      }
+
+      .features {
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:600px) {
+
+      header {
+        height:70px;
+      }
+
+      .nav {
+        width:calc(100% - 32px);
+      }
+
+      .brand img {
+        width:145px;
+      }
+
+      .nav-link {
+        display:none;
+      }
+
+      .hero,
+      .download-section {
+        width:calc(100% - 32px);
+      }
+
+      h1 {
+        font-size:4.1rem;
+      }
+
+      .visual {
+        height:390px;
+        transform:scale(.82);
+        margin:-20px 0;
+      }
+
+      .download-header {
+        display:block;
+      }
+
+      .download-header p {
+        margin-top:8px;
+      }
+
+      .download-inner {
+        padding:22px;
+      }
+
+      .os-selector {
+        grid-template-columns:1fr 1fr;
+      }
+
+      .product-name {
+        font-size:1rem;
+      }
+
+      .footer-inner {
+        width:calc(100% - 32px);
+      }
+    }
+
   </style>
+
+  <script src="assets/js/theme-early.js"></script>
+  <link rel="stylesheet" href="assets/css/theme.css">
+
+  <script type="module" src="assets/js/theme.js"></script>
+
   <link rel="stylesheet" href="/assets/css/chatbot.css">
   <script src="/assets/js/chatbot.js" defer></script>
+
 </head>
-<body>
-  <main>
-    <div class="download-shell">
-      <div class="download-card">
-        <p class="eyebrow">Download</p>
-        <h1>Teryzon app</h1>
-        <p class="download-copy">
-          Get the Teryzon app and start monitoring soil conditions, tracking field data, and exploring healthier ground decisions from your device.
-        </p>
 
-        <div class="download-actions">
-          <a class="button button-primary" href="https://example.com/teryzon-app.apk" download>Download APK</a>
-          <a class="button button-secondary" href="/">Back to home</a>
-        </div>
+<body class="download-page">
 
-        <div class="platform-grid">
-          <a class="platform-card" href="https://example.com/teryzon-windows.zip" download>
-            <div class="platform-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-                <rect x="3.5" y="4" width="17" height="17" rx="2.2" fill="currentColor" opacity="0.18"></rect>
-                <path d="M7 7.5h10v9H7z" fill="currentColor"></path>
-                <path d="M5.5 7.8h2.2v9.3H5.5zM16.3 7.8h2.2v9.3h-2.2zM7 5.5h10v2.1H7zM7 16.2h10v2.3H7z" fill="#0b0807"></path>
-              </svg>
-            </div>
-            <h3>Windows</h3>
-            <p>Desktop install for reliable field analysis and team workflows.</p>
-            <span class="card-link">Download for Windows</span>
-          </a>
+<!-- =========================================================
+     BACKGROUND
+========================================================= -->
 
-          <a class="platform-card" href="https://example.com/teryzon-linux.tar.gz" download>
-            <div class="platform-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-                <path d="M12 3.8c-1.7 0-3.1 1.4-3.1 3.1 0 .8.3 1.5.8 2.1l.1.1c.5.5 1.2.8 1.9.8s1.4-.3 1.9-.8l.1-.1c.5-.6.8-1.3.8-2.1 0-1.7-1.4-3.1-3.1-3.1Zm-3.8 9.8c-1 0-1.8.8-1.8 1.8v1.3c0 .5.2.9.5 1.3l3.2 3.2c.7.7 1.7 1 2.7 1s2-.3 2.7-1l3.2-3.2c.3-.4.5-.8.5-1.3v-1.3c0-1-.8-1.8-1.8-1.8H8.2Zm-2.2 2.7h.9v1.2H6v-1.2Zm13.6 0h.9v1.2h-.9v-1.2Zm-4.1-9.7c.8.1 1.5.7 1.5 1.6 0 .8-.6 1.5-1.4 1.6l-.9.1c-.8 0-1.5-.7-1.5-1.5 0-.8.7-1.5 1.5-1.5h.8Z" fill="currentColor"></path>
-                <path d="M10.2 12.7c-.6.1-1.1.6-1.1 1.2v1.5l1.7-1.7c.2-.2.5-.3.8-.3h.2c.2 0 .3 0 .5.1-.5-.3-1.1-.5-1.8-.5h-.3Zm3.7 0c.6.1 1.1.6 1.1 1.2v1.5l-1.7-1.7c-.2-.2-.5-.3-.8-.3h-.2c-.2 0-.3 0-.5.1.5-.3 1.1-.5 1.8-.5h.3Z" fill="#0b0807" opacity="0.9"></path>
-              </svg>
-            </div>
-            <h3>Linux</h3>
-            <p>Optimized for developers, labs, and lightweight field deployment.</p>
-            <span class="card-link">Download for Linux</span>
-          </a>
+<div class="background">
 
-          <a class="platform-card" href="https://example.com/teryzon-app.apk" download>
-            <div class="platform-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-                <path d="M12 2.8c1.2 0 2.2 1 2.2 2.2v.7h1.2a3.2 3.2 0 0 1 3.2 3.2v1.1c0 1.5-.7 2.8-2 3.6l-.4.3.4.3a3.7 3.7 0 0 1 2 3.4V17a3.2 3.2 0 0 1-3.2 3.2H9.2A3.2 3.2 0 0 1 6 17v-.5c0-1.5.8-2.8 2-3.4l.4-.3-.4-.3a3.8 3.8 0 0 1-2-3.6V8.9A3.2 3.2 0 0 1 9.2 5.7h1.2v-.7c0-1.2 1-2.2 2.2-2.2Zm-1.4 6.4h2.8a2 2 0 0 1 2 2v1.9a2 2 0 0 1-2 2h-2.8a2 2 0 0 1-2-2v-1.9a2 2 0 0 1 2-2Zm2.4-3.9c-.6 0-1 .5-1 1.1v.9h2.1v-.9c0-.6-.5-1.1-1.1-1.1Zm-2.1 8.6h2.8v1.2h-2.8v-1.2Zm.7-4.7h1.4v1.2h-1.4v-1.2Z" fill="currentColor"></path>
-                <circle cx="9.5" cy="9.8" r=".7" fill="#0b0807"></circle>
-                <circle cx="14.5" cy="9.8" r=".7" fill="#0b0807"></circle>
-                <path d="M10.3 12.5c.6.6 1.2.9 1.7.9.5 0 1.1-.3 1.7-.9" stroke="#0b0807" stroke-width="1.2" stroke-linecap="round" fill="none"></path>
-              </svg>
-            </div>
-            <h3>Android</h3>
-            <p>Portable field access for on-site monitoring and fast decision making.</p>
-            <span class="card-link">Download for Android</span>
-          </a>
+  <div class="grid"></div>
+  <div class="glow"></div>
+  <div class="noise"></div>
 
-          <a class="platform-card" href="https://example.com/teryzon-macos.dmg" download>
-            <div class="platform-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-                <path d="M13.5 3.5c-.8.2-1.5.9-1.9 1.8-.3.8-.3 1.6-.1 2.3.1.5.4 1.1.7 1.5l.3.4c.5.7 1.2 1 2 1.3.9.3 1.9.2 2.7-.2.8-.4 1.4-1.1 1.7-2 .3-.8.4-1.7.2-2.5-.2-.9-.8-1.7-1.6-2.1-.8-.4-1.6-.4-2.4-.2-.2.1-.4.2-.6.3Z" fill="currentColor" opacity="0.92"></path>
-                <path d="M15.9 9.1c-1.5.4-2.7 1.6-3.1 3.1-.4 1.4-.1 3 .9 4.2.9 1.1 2.3 1.7 3.7 1.7 1.4 0 2.8-.6 3.7-1.7.9-1.2 1.2-2.8.9-4.2-.4-1.5-1.6-2.7-3.1-3.1-.7-.2-1.5-.2-2.1 0Z" fill="currentColor"></path>
-                <path d="M7.5 4.7c.4-.9 1.3-1.6 2.3-1.8.9-.2 1.8-.2 2.7.1-1.8 1.1-2.6 3.2-2.2 5.2-.9.3-1.9.3-2.8-.2-.9-.5-1.5-1.4-1.7-2.4-.2-1 .3-2 .7-2.9Zm2.8 13.5A3.8 3.8 0 0 1 6.5 14c0-1.6.9-3 2.3-3.7.4-.2.9-.4 1.4-.5.3-.1.7-.1 1-.1l.3.1a3.4 3.4 0 0 1 1.5 2.3c.1.7.1 1.4-.1 2.1-.2.8-.7 1.5-1.4 2-.6.5-1.4.8-2.2.8Z" fill="currentColor" opacity="0.9"></path>
-              </svg>
-            </div>
-            <h3>macOS</h3>
-            <p>Built for Mac users who want clean, portable AI soil insights.</p>
-            <span class="card-link">Download for macOS</span>
-          </a>
-        </div>
+</div>
 
-        <div class="meta-row">
-          <span>Multi-platform</span>
-          <span>Field-ready app</span>
-          <span>Updated 2026</span>
-        </div>
-      </div>
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<header>
+
+  <nav class="nav">
+
+    <a href="index.html" class="brand">
+      <img
+        src="images/Horizons logo (1).png"
+        alt="Teryzon"
+      >
+    </a>
+
+    <div class="nav-right">
+
+  
+
+      <a href="index.html" class="nav-button">
+        Open platform
+      </a>
+
     </div>
-  </main>
+
+  </nav>
+
+</header>
+
+
+<!-- =========================================================
+     HERO
+========================================================= -->
+
+<section class="hero">
+
+  <div class="hero-copy">
+
+    <div class="eyebrow">
+      <span class="eyebrow-dot"></span>
+      Teryzon platform
+    </div>
+
+    <h1>
+      Your soil.<br>
+      <span>Connected.</span>
+    </h1>
+
+    <p class="hero-description">
+      Download Teryzon and turn environmental measurements
+      into meaningful insights. Connect with your rover,
+      explore your readings and understand the ground beneath you.
+    </p>
+
+  </div>
+
+
+  <!-- VISUAL -->
+
+  <div class="visual">
+
+    <div class="orbit-dot"></div>
+    <div class="orbit-dot two"></div>
+
+    <div class="device" aria-label="Teryzon field monitoring preview">
+
+      <div class="device-top">
+
+        <span class="device-dot"></span>
+        <span class="device-dot"></span>
+        <span class="device-dot"></span>
+
+      </div>
+
+      <div class="device-screen">
+
+        <div>
+          <div class="screen-label">Field scan</div>
+          <div class="screen-value">
+            Healthy
+            <span>3 zones reviewed</span>
+          </div>
+        </div>
+
+        <div class="telemetry">
+
+          <div class="telemetry-card">
+            <div class="telemetry-name">Water</div>
+            <div class="telemetry-number">Balanced</div>
+          </div>
+
+          <div class="telemetry-card">
+            <div class="telemetry-name">Air</div>
+            <div class="telemetry-number">21°C</div>
+          </div>
+
+          <div class="telemetry-card">
+            <div class="telemetry-name">Soil</div>
+            <div class="telemetry-number">Stable</div>
+          </div>
+
+          <div class="telemetry-card">
+            <div class="telemetry-name">pH</div>
+            <div class="telemetry-number">6.8</div>
+          </div>
+
+        </div>
+
+        <div class="graph" aria-hidden="true">
+          <svg viewBox="0 0 300 85" preserveAspectRatio="none">
+            <path d="M0 62 C25 52 35 65 55 50 S85 25 110 43 S140 66 160 40 S195 23 215 38 S250 63 275 30 S290 28 300 18" fill="none" stroke="#d26d4a" stroke-width="2"/>
+            <path d="M0 62 C25 52 35 65 55 50 S85 25 110 43 S140 66 160 40 S195 23 215 38 S250 63 275 30 S290 28 300 18 V85 H0 Z" fill="rgba(210,109,74,.08)" stroke="none"/>
+          </svg>
+          <div class="scan-line"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     DOWNLOAD
+========================================================= -->
+
+<section class="download-section">
+
+  <div class="download-header">
+
+    <div>
+
+      <h2>Get Teryzon</h2>
+
+      <p>
+        Choose your platform and start exploring.
+      </p>
+
+    </div>
+
+    <p>
+      Latest stable release
+    </p>
+
+  </div>
+
+
+  <div class="download-box">
+
+    <div class="download-inner">
+
+      <div>
+
+        <div class="product-row">
+
+          <div class="product-icon">
+
+            <img
+              src="images/Horizons mini logo (1).png"
+              alt="Teryzon"
+            >
+
+          </div>
+
+          <div>
+
+            <div class="product-name">
+              Teryzon
+            </div>
+
+            <div class="product-subtitle">
+              Environmental intelligence platform
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="version">
+
+          <span class="version-dot"></span>
+
+          Version 1.0.0 · Stable release
+
+        </div>
+
+
+        <!-- OS SELECTOR -->
+
+        <div class="os-selector">
+
+          <button
+            class="os active"
+            data-platform="Android"
+            data-file="/downloads/teryzon.apk"
+            data-type="APK"
+          >
+
+            <!-- Android -->
+            <svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+
+              <path d="M7 8h10v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V8Z"/>
+              <path d="M9 8 7.5 5.5"/>
+              <path d="M15 8l1.5-2.5"/>
+              <path d="M9 5h6"/>
+              <path d="M5 10v4"/>
+              <path d="M19 10v4"/>
+              <circle cx="10" cy="11" r=".5" fill="currentColor"/>
+              <circle cx="14" cy="11" r=".5" fill="currentColor"/>
+
+            </svg>
+
+            Android
+
+          </button>
+
+
+          <button
+            class="os"
+            data-platform="Windows"
+            data-file="/downloads/teryzon-windows.zip"
+            data-type="ZIP"
+          >
+
+            <!-- Windows -->
+            <svg viewBox="0 0 24 24" fill="currentColor">
+
+              <path d="M2 4.2 10.7 3v8.4H2V4.2Z"/>
+              <path d="M12 2.8 22 1.5v9.9H12V2.8Z"/>
+              <path d="M2 12.6h8.7V21L2 19.8v-7.2Z"/>
+              <path d="M12 12.6h10v9.9L12 21.2v-8.6Z"/>
+
+            </svg>
+
+            Windows
+
+          </button>
+
+
+          <button
+            class="os"
+            data-platform="Linux"
+            data-file="/downloads/teryzon-linux.tar.gz"
+            data-type="TAR.GZ"
+          >
+
+            <!-- Linux -->
+            <svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+
+              <path d="M12 3c-2.5 0-4 2.1-4 5v2.5c0 1.3-.7 2.5-1.6 3.5-.7.8-1.1 1.8-.7 2.8.5 1.3 2 1.7 3.3 1.2"/>
+              <path d="M12 3c2.5 0 4 2.1 4 5v2.5c0 1.3.7 2.5 1.6 3.5.7.8 1.1 1.8.7 2.8-.5 1.3-2 1.7-3.3 1.2"/>
+              <circle cx="10" cy="9" r=".7"/>
+              <circle cx="14" cy="9" r=".7"/>
+
+            </svg>
+
+            Linux
+
+          </button>
+
+
+          <button
+            class="os"
+            data-platform="macOS"
+            data-file="/downloads/teryzon-macos.dmg"
+            data-type="DMG"
+          >
+
+            <!-- Apple -->
+            <svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+
+              <path d="M15.5 7.2c-.8 1-1.5 1.4-2.6 1.3-.1-1.1.3-2.1 1-2.8.7-.8 1.8-1.3 2.8-1.3.1 1.1-.3 2-1.2 2.8Z"/>
+              <path d="M17.8 12.7c0-2 1.6-3 1.7-3.1-.9-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7-1.3 0-2.5.8-3.2 1.9-1.4 2.4-.4 6 1 7.9.7.9 1.5 1.9 2.6 1.8 1-.1 1.4-.6 2.7-.6 1.3 0 1.7.6 2.7.6 1.1 0 1.8-.9 2.5-1.8.8-1 1.1-2.1 1.1-2.2-.1 0-2.6-1-2.6-2.9Z"/>
+
+            </svg>
+
+            macOS
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- DOWNLOAD BUTTON -->
+
+      <div class="download-action">
+
+        <a
+          id="downloadButton"
+          class="download-main"
+          href="/downloads/teryzon.apk"
+          download
+        >
+
+          <span id="downloadText">
+            Download for Android
+          </span>
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+
+            <path d="M12 3v12"/>
+            <path d="m7 10 5 5 5-5"/>
+            <path d="M5 21h14"/>
+
+          </svg>
+
+        </a>
+
+        <div
+          id="fileInfo"
+          class="file-info"
+        >
+          APK · Latest stable
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- FEATURES -->
+
+  <div class="features">
+
+    <div class="feature">
+
+      <div class="feature-number">
+        01 / CONNECT
+      </div>
+
+      <h3>
+        Rover ready
+      </h3>
+
+      <p>
+        Connect Teryzon with your ecological survey
+        equipment and bring field measurements into one
+        platform.
+      </p>
+
+    </div>
+
+
+    <div class="feature">
+
+      <div class="feature-number">
+        02 / ANALYSE
+      </div>
+
+      <h3>
+        Understand your data
+      </h3>
+
+      <p>
+        Transform raw measurements into information that
+        helps you understand the condition of your soil.
+      </p>
+
+    </div>
+
+
+    <div class="feature">
+
+      <div class="feature-number">
+        03 / RESTORE
+      </div>
+
+      <h3>
+        Act on insights
+      </h3>
+
+      <p>
+        Use your measurements to develop practical
+        strategies for improving soil health.
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =========================================================
+     FOOTER
+========================================================= -->
+
+<footer>
+
+  <div class="footer-inner">
+
+    <a
+      class="back"
+      href="index.html"
+    >
+      ← Back to Teryzon
+    </a>
+
+    <span>
+      © 2026 Teryzon™. All rights reserved.
+    </span>
+
+  </div>
+
+</footer>
+
+
+<!-- =========================================================
+     INTERACTION
+========================================================= -->
+
+<script>
+
+  const platforms = document.querySelectorAll(".os");
+  const downloadButton = document.getElementById("downloadButton");
+  const downloadText = document.getElementById("downloadText");
+  const fileInfo = document.getElementById("fileInfo");
+
+  function getDetectedPlatform() {
+    const userAgent = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+
+    if (/Android/i.test(userAgent)) return "Android";
+    if (/Windows/i.test(userAgent) || /Win32|Win64|WOW64/i.test(platform)) return "Windows";
+    if (/Linux/i.test(userAgent) || /Linux/i.test(platform)) return "Linux";
+    if (/Mac/i.test(userAgent) || /Mac/i.test(platform)) return "macOS";
+
+    return "Android";
+  }
+
+  function setPlatform(platformName) {
+    const platform = Array.from(platforms).find(item => item.dataset.platform === platformName) || platforms[0];
+
+    platforms.forEach(item => {
+      item.classList.toggle("active", item === platform);
+    });
+
+    const name = platform.dataset.platform;
+    const file = platform.dataset.file;
+    const type = platform.dataset.type;
+
+    downloadButton.href = file;
+    downloadText.textContent = "Download for " + name;
+    fileInfo.textContent = type + " · Latest stable";
+  }
+
+  platforms.forEach(platform => {
+    platform.addEventListener("click", () => setPlatform(platform.dataset.platform));
+  });
+
+  setPlatform(getDetectedPlatform());
+
+
+  /* Small button feedback */
+
+  downloadButton.addEventListener("click", () => {
+
+    const original = downloadText.textContent;
+
+    downloadText.textContent = "Starting download...";
+
+    setTimeout(() => {
+      downloadText.textContent = original;
+    }, 1300);
+
+  });
+
+</script>
+
+
 </body>
 </html>
