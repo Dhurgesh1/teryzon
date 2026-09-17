@@ -355,11 +355,11 @@ html[data-theme="light"] .site-header{
 
   display:block;
 
-  width:150px;
+  width:350px;
 
   height:auto;
 
-  max-width:42vw;
+  max-width:62vw;
 
   object-fit:contain;
 
