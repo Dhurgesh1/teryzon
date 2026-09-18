@@ -6,3 +6,7 @@ git push
 
 git commit --allow-empty -m "Redeploy GitHub Pages"
 git push origin main
+
+git fetch origin
+git reset --hard origin/main
+git clean -fd
