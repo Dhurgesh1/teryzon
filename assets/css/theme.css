@@ -46,3 +46,30 @@ html[data-theme="light"] body header { background-color: rgba(244, 238, 233, .86
   .theme-control { margin: 10px 0; }
   .nav-links .theme-control { align-self: flex-start; }
 }
+
+@media (max-width: 767px) {
+  html[data-theme="light"] body .nav {
+    background: rgba(255, 255, 255, .82);
+    border-color: rgba(104, 93, 86, .2);
+    box-shadow: 0 14px 34px rgba(55, 38, 31, .12);
+  }
+
+  html[data-theme="light"] body .nav-links {
+    background: rgba(255, 255, 255, .98);
+    border-color: rgba(104, 93, 86, .2);
+    box-shadow: 0 24px 50px rgba(55, 38, 31, .16);
+  }
+
+  html[data-theme="light"] body .nav-links > a {
+    border-bottom-color: rgba(104, 93, 86, .16);
+  }
+
+  html[data-theme="light"] body .nav-links > a:hover,
+  html[data-theme="light"] body .nav-links > a:focus-visible {
+    background: rgba(158, 74, 53, .1);
+  }
+
+  html[data-theme="light"] body .nav-links .nav-cta {
+    background: rgba(255, 255, 255, .98);
+  }
+}

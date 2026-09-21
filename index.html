@@ -35,6 +35,12 @@
     .menu-toggle { align-items: center; background: transparent; border: 0; height: 44px; justify-content: center; padding: 8px; width: 44px; }
     .menu-toggle morph-icon { color: var(--ink); display: block; height: 25px; width: 25px; }
     .button, .nav-cta { border-radius: 999px; }
+    .back-to-top { align-items: center; background: var(--terracotta); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; bottom: 24px; box-shadow: 0 12px 28px rgba(0,0,0,.28); color: var(--black); cursor: pointer; display: inline-flex; font-size: 1.35rem; height: 48px; justify-content: center; left: 24px; opacity: 0; pointer-events: none; position: fixed; transform: translateY(12px); transition: opacity .22s ease, transform .22s ease, visibility .22s ease; visibility: hidden; width: 48px; z-index: 20; }
+    .back-to-top svg { display: block; height: 22px; width: 22px; }
+    .back-to-top.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); visibility: visible; }
+    .back-to-top:hover, .back-to-top:focus-visible { box-shadow: 0 16px 34px rgba(175,83,59,.35); outline: 2px solid var(--ink); outline-offset: 3px; }
+    html[data-theme="light"] body .back-to-top { border-color: rgba(33,23,20,.16); color: #fff; }
+    @media (max-width: 640px) { .back-to-top { bottom: 18px; left: 16px; } }
     .button {
       position: relative;
       display: inline-flex;
@@ -397,13 +403,20 @@
       }
 
       .site-header {
+        padding-top: 10px;
         position: absolute;
         width: 100%;
       }
 
       .nav {
+        background: rgba(12, 9, 8, .72);
+        border: 1px solid rgba(244, 238, 233, .14);
+        border-radius: 18px;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, .24);
         min-height: 72px;
-        padding: 16px 0;
+        padding: 10px 12px 10px 16px;
+        position: relative;
+        z-index: 1;
       }
 
       .brand-logo {
@@ -419,21 +432,46 @@
         padding: 8px;
       }
 
+      .menu-toggle:focus-visible {
+        border-radius: 12px;
+        outline: 2px solid var(--terracotta);
+        outline-offset: 2px;
+      }
+
+      .site-header::after {
+        background: rgba(0, 0, 0, .38);
+        content: "";
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        position: fixed;
+        transition: opacity .22s ease, visibility .22s ease;
+        visibility: hidden;
+        z-index: 0;
+      }
+
+      .site-header:has(.nav-links.is-open)::after {
+        opacity: 1;
+        visibility: visible;
+      }
+
       .nav-links {
         align-items: stretch;
-        background: rgba(11, 8, 7, .98);
-        border: 1px solid var(--line);
-        border-radius: 0 0 18px 18px;
+        background: rgba(20, 14, 12, .98);
+        border: 1px solid rgba(244, 238, 233, .14);
+        border-radius: 16px;
+        box-shadow: 0 24px 50px rgba(0, 0, 0, .34);
         display: flex;
         gap: 0;
-        left: 0;
+        left: 12px;
         opacity: 0;
-        padding: 8px;
+        padding: 10px;
+        padding-bottom: 14px;
         pointer-events: none;
         position: absolute;
-        right: 0;
-        top: 72px;
-        transform: translateY(-12px);
+        right: 12px;
+        top: calc(100% + 10px);
+        transform: translateY(-8px) scale(.98);
         transition: opacity .22s ease, transform .22s ease, visibility .22s ease;
         visibility: hidden;
         width: auto;
@@ -442,7 +480,7 @@
       .nav-links.is-open {
         opacity: 1;
         pointer-events: auto;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
         visibility: visible;
       }
 
@@ -450,9 +488,18 @@
         align-items: center;
         border-bottom: 1px solid rgba(48, 34, 30, .72);
         display: flex;
-        min-height: 44px;
-        padding: 9px 12px;
+        font-size: .82rem;
+        letter-spacing: .1em;
+        min-height: 52px;
+        padding: 14px 12px;
         width: 100%;
+      }
+
+      .nav-links > a:hover,
+      .nav-links > a:focus-visible {
+        background: rgba(175, 83, 59, .12);
+        color: var(--ink);
+        outline: none;
       }
 
       .nav-links > a:last-of-type {
@@ -466,8 +513,12 @@
       }
 
       .nav-links .nav-cta {
+        flex: 0 0 52px;
+        height: 52px;
         justify-content: center;
-        margin-top: 4px;
+        margin-top: 8px;
+        min-height: 52px;
+        white-space: nowrap;
       }
 
       .hero {
@@ -879,6 +930,7 @@
       </div>
     </nav>
   </header>
+  <button class="back-to-top" id="back-to-top" type="button" aria-label="Back to top" title="Back to top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg></button>
   <main>
     <section class="hero" id="home"><div class="hero-grid shell"><div class="hero-copy">
       <p class="eyebrow"><span></span> Intelligent soil monitoring</p><h1>Know your<br><em>ground</em> better.</h1>
@@ -1020,6 +1072,11 @@
     const menuIcon = document.querySelector('#menu-icon'); const xIcon = 'M6 6l12 12M6 18L18 6';
     toggle.addEventListener('click', () => { const open = menu.classList.toggle('is-open'); toggle.setAttribute('aria-expanded', open); toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); menuIcon.morphTo(open ? xIcon : 'M4 6h16M4 12h16M4 18h16'); });
     menu.addEventListener('click', () => { menu.classList.remove('is-open'); toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Open menu'); menuIcon.morphTo('M4 6h16M4 12h16M4 18h16'); });
+    const backToTop = document.querySelector('#back-to-top');
+    const updateBackToTop = () => backToTop.classList.toggle('is-visible', window.scrollY > 420);
+    window.addEventListener('scroll', updateBackToTop, { passive: true });
+    backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    updateBackToTop();
     document.querySelector('#contact-form').addEventListener('submit', (event) => { event.preventDefault(); event.currentTarget.querySelector('.form-status').textContent = 'Thanks. We will be in touch shortly.'; event.currentTarget.reset(); });
 
     const timelineItems = document.querySelectorAll('.timeline-item');
