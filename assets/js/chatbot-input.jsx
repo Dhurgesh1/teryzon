@@ -78,7 +78,7 @@ function ChatbotLauncher({ panel }) {
 }
 
 function ChatbotInput({ panel }) {
-  const { stream, supported, start, stop } = useMicrophone({ autoStart: false });
+  const mic = useMicrophone();
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
   const speechPrefixRef = useRef('');
@@ -96,23 +96,37 @@ function ChatbotInput({ panel }) {
     const recognition = recognitionRef.current;
     recognitionRef.current = null;
     if (recognition) recognition.stop();
-    stop();
+    mic.stop();
     setListening(false);
   };
 
-  const startListening = () => {
+  const startListening = async () => {
     if (listening) {
       stopListening();
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!supported || !SpeechRecognition) {
-      setVoiceError('Voice input is not supported in this browser.');
+    setVoiceError('');
+    if (!SpeechRecognition) {
+      if (!mic.supported) {
+        setVoiceError('Speech recognition is not supported in this browser.');
+        return;
+      }
+      try {
+        const mediaStream = await mic.start();
+        if (!mediaStream) {
+          setVoiceError('Microphone access is unavailable in this browser.');
+          return;
+        }
+        setListening(true);
+        setVoiceError('Speech recognition is not supported in this browser.');
+      } catch {
+        setVoiceError('Microphone access was denied.');
+      }
       return;
     }
 
-    setVoiceError('');
     speechPrefixRef.current = inputRef.current?.value.trim() || '';
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
@@ -123,7 +137,8 @@ function ChatbotInput({ panel }) {
       const transcript = Array.from(event.results)
         .map((result) => result[0]?.transcript || '')
         .join(' ')
-        .trim();
+        .trim()
+        .replace(/\bterrorism\b/gi, 'Teryzon');
       const input = inputRef.current;
       if (!input) return;
       input.value = [speechPrefixRef.current, transcript].filter(Boolean).join(' ').slice(0, 4000);
@@ -139,7 +154,7 @@ function ChatbotInput({ panel }) {
       window.clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
       recognitionRef.current = null;
-      stop();
+      mic.stop();
       setListening(false);
       setVoiceError(event.error === 'not-allowed' ? 'Microphone permission was denied.' : 'Voice input stopped. Try again.');
     };
@@ -147,7 +162,7 @@ function ChatbotInput({ panel }) {
     recognition.onend = () => {
       if (recognitionRef.current !== recognition) return;
       recognitionRef.current = null;
-      stop();
+      mic.stop();
       setListening(false);
     };
 
@@ -155,16 +170,13 @@ function ChatbotInput({ panel }) {
     try {
       recognition.start();
       setListening(true);
-      Promise.resolve(start()).catch(() => {
+      Promise.resolve(mic.start()).catch(() => {
         if (recognitionRef.current !== recognition) return;
-        recognitionRef.current = null;
-        recognition.abort();
-        setListening(false);
-        setVoiceError('Microphone access was denied.');
+        setVoiceError('Speech recognition is active, but microphone visualization is unavailable.');
       });
     } catch {
       recognitionRef.current = null;
-      stop();
+      mic.stop();
       setListening(false);
       setVoiceError('Unable to start voice input. Try again.');
     }
@@ -190,7 +202,7 @@ function ChatbotInput({ panel }) {
       motionQuery.removeEventListener('change', updateMotionPreference);
       recognitionRef.current?.abort();
       recognitionRef.current = null;
-      stop();
+      mic.stop();
     };
   }, [panel]);
 
@@ -208,7 +220,7 @@ function ChatbotInput({ panel }) {
 
   return (
     <BorderBeam
-      active={panelOpen && !reducedMotion}
+      active={panelOpen && !listening && !reducedMotion}
       colorVariant="colorful"
       size={focused ? 'line' : 'md'}
       strength={0.7}
@@ -218,9 +230,10 @@ function ChatbotInput({ panel }) {
       style={{ width: '100%' }}
     >
       <VoiceBeam
-        active={panelOpen && !reducedMotion}
+        active={panelOpen && listening && !reducedMotion}
         colorVariant="colorful"
-        stream={listening ? stream : null}
+        stream={mic.stream}
+        paused={!listening}
         theme={theme}
         className="teryzon-chatbot-voice-beam"
       >
@@ -238,9 +251,9 @@ function ChatbotInput({ panel }) {
       <button
         className={`teryzon-chatbot-mic${listening ? ' is-listening' : ''}`}
         type="button"
-        aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+        aria-label={listening ? 'Stop microphone' : 'Start microphone'}
         aria-pressed={listening}
-        title={voiceError || (listening ? 'Stop voice input' : 'Start voice input')}
+        title={voiceError || (listening ? 'Stop microphone' : 'Start microphone')}
         onClick={startListening}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -266,7 +279,7 @@ function ChatbotUploadMenu({ menu }) {
 
   return (
     <Liquid fill="var(--teryzon-chat-panel)" blur={6} contrast={18} className="teryzon-chatbot-liquid-menu">
-      <Liquid.Item x={open ? -54 : 0} y={open ? -34 : 0} transition={transition}>
+      <Liquid.Item x={open ? 54 : 0} y={open ? -34 : 0} transition={transition}>
         <button className="teryzon-chatbot-upload-option" type="button" data-upload-kind="file" aria-label="File upload" aria-hidden={!open} tabIndex={open ? 0 : -1} style={{ opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none' }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>
         </button>

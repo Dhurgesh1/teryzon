@@ -733,6 +733,7 @@
 .teryzon-chatbot-mic.is-listening {
   background: rgba(175, 83, 59, .14);
   color: var(--teryzon-chat-accent);
+  animation: teryzonChatMicPulse 1.15s ease-in-out infinite;
 }
 
 .teryzon-chatbot-mic svg { height: 19px; width: 19px; }
@@ -779,6 +780,10 @@
 @keyframes teryzonChatFullscreenExpand {
   from { transform: scale(.82); }
   to { transform: scale(1); }
+}
+
+@keyframes teryzonChatMicPulse {
+  50% { box-shadow: 0 0 0 5px rgba(175, 83, 59, .12); }
 }
 
 @media (max-width: 720px) {
@@ -891,14 +896,6 @@
 }
 
 @media (max-width: 420px) {
-  .teryzon-chatbot-launcher-beam.is-panel-open {
-    border-radius: 16px;
-    bottom: 74px;
-    height: min(80dvh, 620px);
-    left: 8px;
-    right: 8px;
-  }
-
   .teryzon-chatbot-panel {
     border-radius: 16px;
     bottom: 74px;
@@ -929,6 +926,10 @@
   }
 
   .teryzon-chatbot-panel.is-fullscreen {
+    animation: none;
+  }
+
+  .teryzon-chatbot-mic.is-listening {
     animation: none;
   }
 
