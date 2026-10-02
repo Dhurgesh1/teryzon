@@ -683,6 +683,10 @@ const boot = async () => {
       input.focus();
       document.body.style.overflow = window.innerWidth <= 560 ? 'hidden' : '';
     } else {
+      panel.classList.remove('is-fullscreen');
+      const fullscreenButton = panel.querySelector('[data-chat-action="fullscreen"]');
+      fullscreenButton.setAttribute('aria-label', 'Expand chat to full screen');
+      fullscreenButton.innerHTML = icon('<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>');
       document.body.style.overflow = '';
     }
   };

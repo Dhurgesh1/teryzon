@@ -18,7 +18,7 @@
   height: 58px;
   position: fixed;
   right: max(24px, env(safe-area-inset-right));
-  transition: width .42s cubic-bezier(.16, 1, .3, 1), height .42s cubic-bezier(.16, 1, .3, 1), right .42s cubic-bezier(.16, 1, .3, 1), bottom .42s cubic-bezier(.16, 1, .3, 1), border-radius .42s ease;
+  transition: width .3s cubic-bezier(.22, 1, .36, 1), height .3s cubic-bezier(.22, 1, .36, 1), right .3s cubic-bezier(.22, 1, .36, 1), bottom .3s cubic-bezier(.22, 1, .36, 1), border-radius .3s cubic-bezier(.22, 1, .36, 1);
   width: 58px;
   z-index: 1000;
 }
@@ -29,19 +29,9 @@
 }
 
 .teryzon-chatbot-launcher-beam.is-panel-open {
-  border-radius: 22px;
-  bottom: 96px;
-  height: min(760px, calc(100vh - 130px));
-  right: 24px;
-  width: min(820px, calc(100vw - 56px));
-}
-
-.teryzon-chatbot-launcher-beam.is-panel-fullscreen {
-  border-radius: 0;
-  bottom: 0;
-  height: 100dvh;
-  right: 0;
-  width: 100vw;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .teryzon-chatbot-beam-content {
@@ -50,26 +40,6 @@
   overflow: visible;
   position: relative;
   width: 100%;
-}
-
-.teryzon-chatbot-beam-content > .teryzon-chatbot-panel {
-  bottom: auto;
-  height: 100%;
-  left: 0;
-  max-height: none;
-  position: absolute;
-  right: auto;
-  top: 0;
-  transform: none;
-  transition: opacity .18s ease, visibility .18s ease;
-  width: 100%;
-}
-
-.teryzon-chatbot-beam-content > .teryzon-chatbot-panel.is-open {
-  opacity: 1;
-  pointer-events: auto;
-  transform: none;
-  visibility: visible;
 }
 
 .teryzon-chatbot-launcher {
@@ -87,7 +57,7 @@
   overflow: hidden;
   padding: 4px;
   position: relative;
-  transition: background .2s ease;
+  transition: background .3s ease;
   width: 100%;
 }
 
@@ -95,9 +65,6 @@
 .teryzon-chatbot-launcher img { border-radius: 50%; display: block; flex: none; height: 48px; object-fit: contain; width: 48px; }
 .teryzon-chatbot-launcher span { font-size: .82rem; font-weight: 650; white-space: nowrap; }
 .teryzon-chatbot-launcher-beam.is-expanded .teryzon-chatbot-launcher { gap: 10px; padding-right: 12px; }
-.teryzon-chatbot-launcher-beam.is-panel-open .teryzon-chatbot-launcher img,
-.teryzon-chatbot-launcher-beam.is-panel-open .teryzon-chatbot-launcher span { visibility: hidden; }
-
 .teryzon-chatbot-launcher:focus-visible,
 .teryzon-chatbot-button:focus-visible,
 .teryzon-chatbot-quick:focus-visible,
@@ -130,7 +97,7 @@
   position: fixed;
   right: 24px;
   transform: translateY(12px) scale(.98);
-  transition: opacity .32s ease, transform .5s cubic-bezier(.22, 1, .36, 1), visibility .32s ease, width .5s cubic-bezier(.22, 1, .36, 1), height .5s cubic-bezier(.22, 1, .36, 1), right .5s cubic-bezier(.22, 1, .36, 1), bottom .5s cubic-bezier(.22, 1, .36, 1);
+  transition: opacity .3s ease, transform .3s cubic-bezier(.22, 1, .36, 1), visibility .3s ease, width .3s cubic-bezier(.22, 1, .36, 1), height .3s cubic-bezier(.22, 1, .36, 1), right .3s cubic-bezier(.22, 1, .36, 1), bottom .3s cubic-bezier(.22, 1, .36, 1);
   visibility: hidden;
   width: min(820px, calc(100vw - 56px));
   z-index: 1001;
@@ -144,11 +111,13 @@
 }
 
 .teryzon-chatbot-panel.is-fullscreen {
+  animation: teryzonChatFullscreenExpand .5s cubic-bezier(.22, 1, .36, 1) both;
   border-radius: 0;
   bottom: 0;
   height: 100dvh;
   max-height: 100dvh;
   right: 0;
+  transform-origin: bottom right;
   width: 100vw;
   z-index: 2000;
 }
@@ -177,7 +146,7 @@
   min-width: 250px;
   opacity: 1;
   overflow: hidden;
-  transition: width .22s ease, min-width .22s ease, max-width .22s ease, flex-basis .22s ease, opacity .22s ease, border-width .22s ease, margin .22s ease, padding .22s ease, visibility .22s ease;
+  transition: width .3s ease, min-width .3s ease, max-width .3s ease, flex-basis .3s ease, opacity .3s ease, border-width .3s ease, margin .3s ease, padding .3s ease, visibility .3s ease;
   visibility: visible;
 }
 
@@ -354,7 +323,7 @@
 
 .teryzon-chatbot-button:hover { color: var(--teryzon-chat-ink); }
 .teryzon-chatbot-button svg { height: 18px; width: 18px; }
-.teryzon-chatbot-button.sidebar-toggle svg { transition: transform .2s ease; }
+.teryzon-chatbot-button.sidebar-toggle svg { transition: transform .3s ease; }
 .teryzon-chatbot-panel.is-sidebar-collapsed .teryzon-chatbot-button.sidebar-toggle svg {
   transform: rotate(180deg);
 }
@@ -807,6 +776,11 @@
   to { background-position: -240% 0; }
 }
 
+@keyframes teryzonChatFullscreenExpand {
+  from { transform: scale(.82); }
+  to { transform: scale(1); }
+}
+
 @media (max-width: 720px) {
   .teryzon-chatbot-launcher-host {
     display: contents;
@@ -815,26 +789,6 @@
   .teryzon-chatbot-launcher-beam {
     bottom: max(18px, env(safe-area-inset-bottom));
     right: max(18px, env(safe-area-inset-right));
-  }
-
-  .teryzon-chatbot-launcher-beam.is-panel-open {
-    border-radius: 18px;
-    bottom: 82px;
-    height: min(76dvh, 720px);
-    left: 12px;
-    max-height: calc(100dvh - 100px);
-    right: 12px;
-    width: auto;
-  }
-
-  .teryzon-chatbot-launcher-beam.is-panel-open.is-panel-fullscreen {
-    border-radius: 0;
-    bottom: 0;
-    height: 100dvh;
-    left: 0;
-    max-height: 100dvh;
-    right: 0;
-    width: 100vw;
   }
 
   .teryzon-chatbot-panel {
@@ -867,7 +821,7 @@
     opacity: 0;
     visibility: hidden;
     width: 100%;
-    transition: height .22s ease, opacity .22s ease, visibility .22s ease;
+    transition: height .3s ease, opacity .3s ease, visibility .3s ease;
   }
 
   .teryzon-chatbot-panel.is-mobile-sidebar-open .teryzon-chatbot-sidebar {
@@ -972,6 +926,10 @@
   .teryzon-chatbot-launcher-beam,
   .teryzon-chatbot-launcher {
     transition: none;
+  }
+
+  .teryzon-chatbot-panel.is-fullscreen {
+    animation: none;
   }
 
   .teryzon-chatbot-launcher,

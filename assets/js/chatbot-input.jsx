@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { BorderBeam } from 'border-beam';
@@ -10,65 +10,41 @@ const getTheme = () => document.documentElement.dataset.theme === 'light' ? 'lig
 const getReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function ChatbotLauncher({ panel }) {
-  const cardRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
   const [panelOpen, setPanelOpen] = useState(panel.classList.contains('is-open'));
-  const [fullscreen, setFullscreen] = useState(panel.classList.contains('is-fullscreen'));
   const [theme, setTheme] = useState(getTheme);
   const [reducedMotion, setReducedMotion] = useState(getReducedMotion);
-  const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
-
-  useLayoutEffect(() => {
-    const card = cardRef.current;
-    const parent = panel.parentElement;
-    if (!card || !parent || panel.parentElement === card) return undefined;
-
-    const placeholder = document.createComment('chatbot-panel-position');
-    parent.insertBefore(placeholder, panel);
-    card.appendChild(panel);
-
-    return () => {
-      if (placeholder.parentNode) placeholder.parentNode.insertBefore(panel, placeholder);
-      placeholder.remove();
-    };
-  }, [panel]);
 
   useEffect(() => {
     const panelObserver = new MutationObserver(() => {
       setPanelOpen(panel.classList.contains('is-open'));
-      setFullscreen(panel.classList.contains('is-fullscreen'));
     });
     const themeObserver = new MutationObserver(() => setTheme(getTheme()));
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const updateMotionPreference = () => setReducedMotion(motionQuery.matches);
-    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
 
     panelObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     motionQuery.addEventListener('change', updateMotionPreference);
-    window.addEventListener('resize', updateViewportWidth);
 
     return () => {
       panelObserver.disconnect();
       themeObserver.disconnect();
       motionQuery.removeEventListener('change', updateMotionPreference);
-      window.removeEventListener('resize', updateViewportWidth);
     };
   }, [panel]);
 
   const labelVisible = expanded && !panelOpen;
-  const panelRadius = viewportWidth <= 420 ? 16 : viewportWidth <= 720 ? 18 : 22;
   const launcherClass = [
     'teryzon-chatbot-launcher-beam',
     labelVisible && 'is-expanded',
-    panelOpen && 'is-panel-open',
-    fullscreen && 'is-panel-fullscreen'
+    panelOpen && 'is-panel-open'
   ].filter(Boolean).join(' ');
 
   return (
     <BorderBeam
       active={!reducedMotion}
-      borderRadius={fullscreen ? 0 : panelOpen ? panelRadius : labelVisible ? 32 : 29}
+      borderRadius={labelVisible ? 32 : 29}
       colorVariant="colorful"
       duration={3.2}
       size="pulse-outside"
@@ -77,7 +53,7 @@ function ChatbotLauncher({ panel }) {
       className={launcherClass}
       style={{ position: 'fixed' }}
     >
-      <div className="teryzon-chatbot-beam-content" ref={cardRef}>
+      <div className="teryzon-chatbot-beam-content">
         <button
           className="teryzon-chatbot-launcher"
           type="button"
@@ -237,6 +213,7 @@ function ChatbotInput({ panel }) {
       size={focused ? 'line' : 'md'}
       strength={0.7}
       theme={theme}
+      borderRadius={28}
       className="teryzon-chatbot-input-wrap"
       style={{ width: '100%' }}
     >
