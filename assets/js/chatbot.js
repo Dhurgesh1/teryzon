@@ -365,17 +365,19 @@ const renderAttachmentChip = (attachment) => {
 };
 
 const renderMessage = (message) => {
+  const isUser = message.role === 'user';
   const attachments = (message.attachments || []).map(renderAttachmentChip).join('');
   const tableData = (message.attachments || []).map((attachment) => attachment.tableData).find(Boolean) || null;
+  const content = `
+    ${renderMarkdown(message.content || '')}
+    ${tableData ? renderTableView(tableData) : ''}
+    ${attachments ? `<div class="teryzon-chatbot-attachment-row">${attachments}</div>` : ''}
+    <small class="teryzon-chatbot-time">${message.time || timestamp()}</small>
+    ${message.error ? '<button class="teryzon-chatbot-quick" data-chat-retry type="button">Retry</button>' : ''}
+  `;
   return `
-    <article class="teryzon-chatbot-message ${message.role === 'user' ? 'is-user' : ''}">
-      <div class="teryzon-chatbot-bubble">
-        ${renderMarkdown(message.content || '')}
-        ${tableData ? renderTableView(tableData) : ''}
-        ${attachments ? `<div class="teryzon-chatbot-attachment-row">${attachments}</div>` : ''}
-        <small class="teryzon-chatbot-time">${message.time || timestamp()}</small>
-        ${message.error ? '<button class="teryzon-chatbot-quick" data-chat-retry type="button">Retry</button>' : ''}
-      </div>
+    <article class="teryzon-chatbot-message ${isUser ? 'is-user' : ''}">
+      ${isUser ? `<div class="teryzon-chatbot-bubble">${content}</div>` : content}
     </article>
   `;
 };
@@ -571,7 +573,7 @@ const boot = async () => {
   const revealReply = async (content, session) => {
     const reply = { role: 'assistant', content: '', time: timestamp() };
     session.messages.push(reply);
-    let bubble = null;
+    let replyArticle = null;
     replyRevealing = true;
     send.disabled = false;
     setReplyPaused(false);
@@ -581,11 +583,11 @@ const boot = async () => {
     for (const word of words) {
       await waitForReplyResume();
       reply.content += word;
-      if (!bubble) {
+      if (!replyArticle) {
         messages.insertAdjacentHTML('beforeend', renderMessage(reply));
-        bubble = messages.lastElementChild?.querySelector('.teryzon-chatbot-bubble');
+        replyArticle = messages.lastElementChild;
       } else {
-        bubble.innerHTML = `${renderMarkdown(reply.content)}<small class="teryzon-chatbot-time">${escapeHtml(reply.time)}</small>`;
+        replyArticle.innerHTML = `${renderMarkdown(reply.content)}<small class="teryzon-chatbot-time">${escapeHtml(reply.time)}</small>`;
       }
       messages.scrollTop = messages.scrollHeight;
       await new Promise((resolve) => window.setTimeout(resolve, 38));

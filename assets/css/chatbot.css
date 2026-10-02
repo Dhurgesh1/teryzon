@@ -307,33 +307,45 @@
 
 .teryzon-chatbot-message.is-user { justify-content: flex-end; }
 
-.teryzon-chatbot-bubble {
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid var(--teryzon-chat-line);
-  border-radius: 16px 16px 16px 6px;
+.teryzon-chatbot-message.is-user .teryzon-chatbot-bubble {
+  background: var(--teryzon-chat-accent);
+  border: 1px solid transparent;
   font-size: .86rem;
   line-height: 1.55;
   max-width: 88%;
   overflow-wrap: anywhere;
   padding: 12px 13px;
-}
-
-.teryzon-chatbot-message.is-user .teryzon-chatbot-bubble {
-  background: var(--teryzon-chat-accent);
-  border-color: transparent;
   border-radius: 16px 16px 6px 16px;
   color: #000;
 }
 
-.teryzon-chatbot-bubble p { margin: 0 0 8px; }
-.teryzon-chatbot-bubble p:last-child { margin-bottom: 0; }
+.teryzon-chatbot-message:not(.is-user) {
+  align-items: flex-start;
+  color: var(--teryzon-chat-ink);
+  display: flex;
+  flex-direction: column;
+  font-size: .86rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.teryzon-chatbot-bubble p,
+.teryzon-chatbot-message:not(.is-user) > p { margin: 0 0 8px; }
+.teryzon-chatbot-bubble p:last-child,
+.teryzon-chatbot-message:not(.is-user) > p:last-of-type { margin-bottom: 0; }
 .teryzon-chatbot-bubble ul,
-.teryzon-chatbot-bubble ol { margin: 8px 0 0; padding-left: 20px; }
+.teryzon-chatbot-bubble ol,
+.teryzon-chatbot-message:not(.is-user) > ul,
+.teryzon-chatbot-message:not(.is-user) > ol { margin: 8px 0 0; padding-left: 20px; }
 .teryzon-chatbot-bubble a { color: var(--teryzon-chat-accent); text-decoration: underline; }
+.teryzon-chatbot-message:not(.is-user) a { color: var(--teryzon-chat-accent); text-decoration: underline; }
 .teryzon-chatbot-message.is-user .teryzon-chatbot-bubble a { color: #000; }
-.teryzon-chatbot-bubble code { background: rgba(0, 0, 0, 0.24); border-radius: 4px; font-size: .8em; padding: 2px 4px; }
-.teryzon-chatbot-bubble pre { background: #000; border: 1px solid var(--teryzon-chat-line); border-radius: 8px; overflow: auto; padding: 10px; }
-.teryzon-chatbot-bubble pre code { background: none; padding: 0; }
+.teryzon-chatbot-bubble code,
+.teryzon-chatbot-message:not(.is-user) code { background: rgba(0, 0, 0, 0.24); border-radius: 4px; font-size: .8em; padding: 2px 4px; }
+.teryzon-chatbot-bubble pre,
+.teryzon-chatbot-message:not(.is-user) pre { background: #000; border: 1px solid var(--teryzon-chat-line); border-radius: 8px; overflow: auto; padding: 10px; }
+.teryzon-chatbot-bubble pre code,
+.teryzon-chatbot-message:not(.is-user) pre code { background: none; padding: 0; }
 .teryzon-chatbot-time {
   color: var(--teryzon-chat-muted);
   display: block;
