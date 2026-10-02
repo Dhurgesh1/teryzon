@@ -6,11 +6,11 @@
   },
   "dependencies": {
     "border-beam": "^1.4.1",
-    "bot-avatars": "^0.2.1",
     "liquid-gooey": "^0.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "thinking-orbs": "^0.3.2"
+    "thinking-orbs": "^0.3.2",
+    "voice-glow": "^0.2.1"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"

@@ -364,7 +364,7 @@ const renderAttachmentChip = (attachment) => {
   `;
 };
 
-const renderMessage = (message) => {
+const renderMessage = (message, messageIndex = -1) => {
   const isUser = message.role === 'user';
   const attachments = (message.attachments || []).map(renderAttachmentChip).join('');
   const tableData = (message.attachments || []).map((attachment) => attachment.tableData).find(Boolean) || null;
@@ -375,9 +375,16 @@ const renderMessage = (message) => {
     <small class="teryzon-chatbot-time">${message.time || timestamp()}</small>
     ${message.error ? '<button class="teryzon-chatbot-quick" data-chat-retry type="button">Retry</button>' : ''}
   `;
+  const actions = isUser ? `
+    <div class="teryzon-chatbot-message-actions">
+      <button type="button" data-user-message-action="edit" data-message-index="${messageIndex}" aria-label="Edit message" title="Edit message">${icon('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>')}</button>
+      <button type="button" data-user-message-action="resend" data-message-index="${messageIndex}" aria-label="Resend message" title="Resend message">${icon('<path d="M3 2v6h6"/><path d="M3.05 13A9 9 0 1 0 5.64 5.64L3 8"/>')}</button>
+    </div>
+  ` : '';
   return `
     <article class="teryzon-chatbot-message ${isUser ? 'is-user' : ''}">
       ${isUser ? `<div class="teryzon-chatbot-bubble">${content}</div>` : content}
+      ${actions}
     </article>
   `;
 };
@@ -399,7 +406,11 @@ const boot = async () => {
   const shouldHideLogo = legalRoutes.some((route) => currentUrl === route || currentUrl.endsWith(route) || currentUrl.includes(route));
 
   document.body.insertAdjacentHTML('beforeend', `
-    <button class="teryzon-chatbot-launcher" type="button" aria-label="Open Teryzon AI" aria-controls="teryzon-chatbot-panel" aria-expanded="false"><span class="teryzon-chatbot-avatar-root" data-chatbot-avatar-root aria-hidden="true">${icon('<path d="M12 4a8 8 0 0 0-8 8c0 1.8.6 3.4 1.7 4.7L5 20l3.3-1.7A8 8 0 1 0 12 4Z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" stroke-width="2.4"/>')}</span></button>
+    <div class="teryzon-chatbot-launcher-host" data-chatbot-launcher-root>
+      <div class="teryzon-chatbot-launcher-beam">
+        <button class="teryzon-chatbot-launcher" type="button" aria-label="Open Teryzon AI" aria-controls="teryzon-chatbot-panel" aria-expanded="false" title="Ask Teryzon AI..."><span aria-hidden="true">${icon('<path d="M12 4a8 8 0 0 0-8 8c0 1.8.6 3.4 1.7 4.7L5 20l3.3-1.7A8 8 0 1 0 12 4Z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" stroke-width="2.4"/>')}</span></button>
+      </div>
+    </div>
     <section class="teryzon-chatbot-panel" id="teryzon-chatbot-panel" role="dialog" aria-modal="false" aria-labelledby="teryzon-chatbot-title" aria-hidden="true">
       <aside class="teryzon-chatbot-sidebar">
         <div class="teryzon-chatbot-sidebar-header">
@@ -426,17 +437,20 @@ const boot = async () => {
         <div class="teryzon-chatbot-upload-bar" aria-live="polite"></div>
         <div class="teryzon-chatbot-quick-wrap"></div>
         <form class="teryzon-chatbot-form">
-          <div class="teryzon-chatbot-upload-menu" data-chatbot-upload-root></div>
-          <input class="teryzon-chatbot-file-input" type="file" accept=".pdf,.doc,.docx,.txt,.csv,.json,image/*" multiple hidden>
-          <div class="teryzon-chatbot-input-host" data-chatbot-input-root>
-            <textarea class="teryzon-chatbot-input" maxlength="4000" rows="1" placeholder="Ask Teryzon AI..." aria-label="Message Teryzon AI"></textarea>
+          <div class="teryzon-chatbot-composer">
+            <div class="teryzon-chatbot-upload-menu" data-chatbot-upload-root></div>
+            <input class="teryzon-chatbot-file-input" type="file" accept=".pdf,.doc,.docx,.txt,.csv,.json,image/*" multiple hidden>
+            <div class="teryzon-chatbot-input-host" data-chatbot-input-root>
+              <textarea class="teryzon-chatbot-input" maxlength="4000" rows="1" placeholder="Ask Teryzon AI..." aria-label="Message Teryzon AI"></textarea>
+            </div>
+            <button class="teryzon-chatbot-send" type="submit" aria-label="Send message" title="Send message">${icon('<path d="M12 19V5M5 12l7-7 7 7"/>')}</button>
           </div>
-          <button class="teryzon-chatbot-send" type="submit" aria-label="Send message" title="Send message">${icon('<path d="M12 19V5M5 12l7-7 7 7"/>')}</button>
         </form>
       </div>
     </section>`);
 
-  const launcher = document.querySelector('.teryzon-chatbot-launcher');
+  const launcherHost = document.querySelector('[data-chatbot-launcher-root]');
+  let launcher = launcherHost.querySelector('.teryzon-chatbot-launcher');
   const panel = document.querySelector('.teryzon-chatbot-panel');
   const inputHost = panel.querySelector('[data-chatbot-input-root]');
   const uploadMenu = panel.querySelector('.teryzon-chatbot-upload-menu');
@@ -446,9 +460,10 @@ const boot = async () => {
     chatbotReact.mountChatbotComponents({
       inputHost,
       panel,
-      launcherHost: launcher.querySelector('[data-chatbot-avatar-root]'),
+      launcherHost,
       uploadHost: uploadMenu
     });
+    launcher = launcherHost.querySelector('.teryzon-chatbot-launcher') || launcher;
   } catch (error) {
     console.error('Unable to load chatbot enhancements.', error);
   }
@@ -476,9 +491,12 @@ const boot = async () => {
   let pending = false;
   let lastFailed = null;
   let pendingUploads = [];
-  let replyPaused = false;
-  let replyRevealing = false;
-  let resumeReply = null;
+  let editingMessageIndex = null;
+  let editingAttachments = [];
+  let activeRequestId = 0;
+  let activeRequestController = null;
+  let activeReplyMessage = null;
+  let activeReplyPrevious = null;
   let thinkingTimer = null;
   let thinkingOrbRoot = null;
   const thinkingStages = [
@@ -550,38 +568,45 @@ const boot = async () => {
     if (label) label.textContent = stage.label;
   };
 
-  const setReplyPaused = (paused) => {
-    replyPaused = paused;
-    send.setAttribute('aria-label', paused ? 'Resume response' : 'Pause response');
-    send.title = paused ? 'Resume response' : 'Pause response';
-    send.innerHTML = paused
-      ? icon('<path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none"/>')
-      : icon('<path d="M8 5h3v14H8zM15 5h3v14h-3z" fill="currentColor" stroke="none"/>');
-    if (!paused && resumeReply) {
-      const resume = resumeReply;
-      resumeReply = null;
-      resume();
-    }
+  const setSendControl = (isStopping) => {
+    send.setAttribute('aria-label', isStopping ? 'Stop response' : 'Send message');
+    send.title = isStopping ? 'Stop response' : 'Send message';
+    send.innerHTML = isStopping
+      ? icon('<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>')
+      : icon('<path d="M12 19V5M5 12l7-7 7 7"/>');
   };
 
-  const waitForReplyResume = async () => {
-    while (replyPaused) {
-      await new Promise((resolve) => { resumeReply = resolve; });
-    }
-  };
-
-  const revealReply = async (content, session) => {
-    const reply = { role: 'assistant', content: '', time: timestamp() };
-    session.messages.push(reply);
+  const revealReply = async (content, session, requestId, messageAction = null) => {
+    let reply;
     let replyArticle = null;
-    replyRevealing = true;
-    send.disabled = false;
-    setReplyPaused(false);
+    if (messageAction) {
+      const userIndex = session.messages.indexOf(messageAction.userMessage);
+      const replyIndex = userIndex + 1;
+      const messageArticles = Array.from(messages.querySelectorAll('.teryzon-chatbot-message:not([data-typing])'));
+      if (messageAction.replyMessage && session.messages[replyIndex] === messageAction.replyMessage) {
+        reply = messageAction.replyMessage;
+        activeReplyPrevious = { content: reply.content, time: reply.time };
+        Object.assign(reply, { content: '', time: timestamp() });
+        replyArticle = messageArticles[replyIndex] || null;
+        if (replyArticle) replyArticle.innerHTML = '';
+        session.messages.splice(replyIndex + 1);
+        messageArticles.slice(replyIndex + 1).forEach((article) => article.remove());
+      } else {
+        session.messages.splice(replyIndex);
+        messageArticles.slice(replyIndex).forEach((article) => article.remove());
+        reply = { role: 'assistant', content: '', time: timestamp() };
+        session.messages.push(reply);
+      }
+    } else {
+      reply = { role: 'assistant', content: '', time: timestamp() };
+      session.messages.push(reply);
+    }
+    activeReplyMessage = reply;
     setThinkingStage(thinkingStages.length - 1);
 
     const words = String(content).match(/\S+\s*/g) || [String(content)];
     for (const word of words) {
-      await waitForReplyResume();
+      if (requestId !== activeRequestId) return;
       reply.content += word;
       if (!replyArticle) {
         messages.insertAdjacentHTML('beforeend', renderMessage(reply));
@@ -592,14 +617,16 @@ const boot = async () => {
       messages.scrollTop = messages.scrollHeight;
       await new Promise((resolve) => window.setTimeout(resolve, 38));
     }
+    activeReplyMessage = null;
+    activeReplyPrevious = null;
   };
 
   const setPending = (value) => {
     pending = value;
-    send.disabled = value;
+    send.disabled = false;
     input.disabled = value;
     if (value) {
-      replyPaused = false;
+      setSendControl(true);
       messages.insertAdjacentHTML('beforeend', `<article class="teryzon-chatbot-message" data-typing><div class="teryzon-chatbot-thinking"><span class="teryzon-chatbot-thinking-orb" data-chatbot-thinking-orb data-orb-state="working"></span><span class="teryzon-chatbot-thinking-label" data-chatbot-thinking-label>Thinking…</span></div></article>`);
       const orbHost = messages.querySelector('[data-chatbot-thinking-orb]');
       thinkingOrbRoot = chatbotReact?.mountThinkingOrb?.(orbHost) || null;
@@ -610,17 +637,42 @@ const boot = async () => {
       }, 1400);
       messages.scrollTop = messages.scrollHeight;
     } else {
-      replyRevealing = false;
+      if (activeReplyMessage && !activeReplyMessage.content) {
+        if (activeReplyPrevious) Object.assign(activeReplyMessage, activeReplyPrevious);
+        else {
+          const activeSession = getActiveSession();
+          const replyIndex = activeSession?.messages.indexOf(activeReplyMessage) ?? -1;
+          if (replyIndex >= 0) activeSession.messages.splice(replyIndex, 1);
+        }
+      }
+      activeReplyMessage = null;
+      activeReplyPrevious = null;
       window.clearInterval(thinkingTimer);
       thinkingTimer = null;
       thinkingOrbRoot?.unmount();
       thinkingOrbRoot = null;
-      replyPaused = false;
-      send.setAttribute('aria-label', 'Send message');
-      send.title = 'Send message';
-      send.innerHTML = icon('<path d="M12 19V5M5 12l7-7 7 7"/>');
+      setSendControl(false);
       messages.querySelector('[data-typing]')?.remove();
     }
+  };
+
+  const cancelRequest = () => {
+    if (!pending) return;
+    activeRequestId += 1;
+    activeRequestController?.abort();
+    activeRequestController = null;
+    if (activeReplyMessage && !activeReplyMessage.content) {
+      const activeSession = getActiveSession();
+      const replyIndex = activeSession?.messages.indexOf(activeReplyMessage) ?? -1;
+      if (replyIndex >= 0) activeSession.messages.splice(replyIndex, 1);
+    }
+    setPending(false);
+    resetPendingUploads();
+    input.value = '';
+    saveCurrent();
+    renderSessionList();
+    renderCurrentSession();
+    input.focus();
   };
 
   const togglePanel = (open) => {
@@ -807,11 +859,22 @@ const boot = async () => {
     renderPendingUploads();
   };
 
-  const request = async (text, attachments = []) => {
+  const clearMessageEdit = () => {
+    editingMessageIndex = null;
+    editingAttachments = [];
+    input.placeholder = 'Ask Teryzon AI...';
+  };
+
+  const request = async (text, attachments = [], messageAction = null) => {
     const trimmed = String(text || '').trim();
     const activeSession = getActiveSession();
-    if (!activeSession || (pending && !trimmed && !attachments.length)) return;
+    if (!activeSession || pending) return;
     if (!trimmed && !attachments.length) return;
+
+    const actionMessage = Number.isInteger(messageAction?.messageIndex)
+      ? activeSession.messages[messageAction.messageIndex]
+      : null;
+    if (messageAction && (!actionMessage || actionMessage.role !== 'user')) return;
 
     const sanitizedAttachments = attachments.map((attachment) => sanitizeAttachment(attachment));
     const hasDocumentContext = sanitizedAttachments.some((attachment) => attachment.extractedText && attachment.extractionStatus !== 'failed');
@@ -821,6 +884,7 @@ const boot = async () => {
       window.alert('The image could not be prepared for analysis. Please try uploading it again.');
       return;
     }
+    if (messageAction?.type === 'edit') clearMessageEdit();
 
     const userMessage = {
       role: 'user',
@@ -829,17 +893,35 @@ const boot = async () => {
       attachments: sanitizedAttachments
     };
 
-    activeSession.messages.push(userMessage);
+    let requestAction = null;
+    if (actionMessage) {
+      if (messageAction.type === 'edit') Object.assign(actionMessage, userMessage);
+      activeSession.messages.splice(messageAction.messageIndex + 1);
+      requestAction = {
+        type: messageAction.type,
+        messageIndex: messageAction.messageIndex,
+        userMessage: actionMessage,
+        replyMessage: null
+      };
+    } else {
+      activeSession.messages.push(userMessage);
+    }
     activeSession.updatedAt = Date.now();
     const titleCandidate = activeSession.messages.find((entry) => entry.role === 'user')?.content || 'New chat';
     activeSession.title = trimTitle(titleCandidate);
     saveCurrent();
     renderSessionList();
     renderCurrentSession();
+    const requestId = ++activeRequestId;
+    const controller = new AbortController();
+    activeRequestController = controller;
     setPending(true);
 
     try {
-      const payloadMessages = activeSession.messages.slice(-MAX_HISTORY).map((message) => buildMultimodalMessageContent({
+      const requestHistory = requestAction
+        ? activeSession.messages.slice(0, requestAction.messageIndex + 1)
+        : activeSession.messages;
+      const payloadMessages = requestHistory.slice(-MAX_HISTORY).map((message) => buildMultimodalMessageContent({
         role: message.role,
         content: message.content,
         attachments: Array.isArray(message.attachments) ? message.attachments : []
@@ -850,6 +932,7 @@ const boot = async () => {
       const failedAttachments = sanitizedAttachments.filter((attachment) => attachment.error && !attachment.extractedText);
       const response = await fetch(API_URL, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: payloadMessages.map((message) => ({
@@ -881,10 +964,12 @@ const boot = async () => {
       if (!response.ok) throw new Error('request failed');
       const data = await response.json();
       if (!data.message) throw new Error('empty response');
+      if (requestId !== activeRequestId) return;
 
       window.clearInterval(thinkingTimer);
       thinkingTimer = null;
-      await revealReply(String(data.message), activeSession);
+      await revealReply(String(data.message), activeSession, requestId, requestAction);
+      if (requestId !== activeRequestId) return;
       activeSession.updatedAt = Date.now();
       lastFailed = null;
       if (hasDocumentContext && !data.message.toLowerCase().includes('document')) {
@@ -894,15 +979,30 @@ const boot = async () => {
         console.info('Image context sent successfully to Teryzon AI.');
       }
     } catch (error) {
+      if (requestId !== activeRequestId || (error instanceof Error && error.name === 'AbortError')) return;
       const userMessageText = (error instanceof Error && error.message) || 'Could not process the uploaded document.';
-      activeSession.messages.push({
+      const errorReply = {
         role: 'assistant',
         content: navigator.onLine ? `Sorry, I ran into a problem while processing your request. ${userMessageText}` : "You're currently offline. Please check your internet connection and try again.",
         error: true,
         time: timestamp()
-      });
+      };
+      if (requestAction) {
+        const replyIndex = requestAction.messageIndex + 1;
+        if (requestAction.replyMessage && activeSession.messages[replyIndex] === requestAction.replyMessage) {
+          Object.assign(requestAction.replyMessage, errorReply);
+          activeSession.messages.splice(replyIndex + 1);
+        } else {
+          activeSession.messages.splice(replyIndex);
+          activeSession.messages.push(errorReply);
+        }
+      } else {
+        activeSession.messages.push(errorReply);
+      }
       lastFailed = userMessage.content;
     } finally {
+      if (requestId !== activeRequestId) return;
+      activeRequestController = null;
       activeSession.updatedAt = Date.now();
       saveCurrent();
       renderSessionList();
@@ -991,17 +1091,51 @@ const boot = async () => {
     renderPendingUploads();
   };
 
+  const handleUserMessageAction = (event) => {
+    const button = event.target.closest('[data-user-message-action]');
+    if (!button) return false;
+    if (pending) return true;
+
+    const messageIndex = Number(button.dataset.messageIndex);
+    const message = getActiveSession()?.messages[messageIndex];
+    if (!message || message.role !== 'user') return true;
+
+    if (button.dataset.userMessageAction === 'edit') {
+      editingMessageIndex = messageIndex;
+      editingAttachments = Array.isArray(message.attachments) ? message.attachments : [];
+      resetPendingUploads();
+      input.value = message.content === 'Shared attachment(s)' ? '' : message.content;
+      input.placeholder = 'Edit your message...';
+      input.focus();
+      return true;
+    }
+
+    if (button.dataset.userMessageAction === 'resend') {
+      const messageIndex = Number(button.dataset.messageIndex);
+      clearMessageEdit();
+      resetPendingUploads();
+      request(
+        message.content === 'Shared attachment(s)' ? '' : message.content,
+        message.attachments || [],
+        { type: 'resend', messageIndex }
+      );
+      return true;
+    }
+
+    return true;
+  };
+
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    if (replyRevealing) {
-      setReplyPaused(!replyPaused);
+    if (pending) {
+      cancelRequest();
       return;
     }
-    if (pending) return;
     const text = input.value;
-    const attachments = [...pendingUploads];
+    const attachments = editingMessageIndex === null ? [...pendingUploads] : [...editingAttachments, ...pendingUploads];
     if (!text.trim() && !attachments.length) return;
-    request(text, attachments);
+    const messageAction = editingMessageIndex === null ? null : { type: 'edit', messageIndex: editingMessageIndex };
+    request(text, attachments, messageAction);
   });
 
   input.addEventListener('keydown', (event) => {
@@ -1047,6 +1181,7 @@ const boot = async () => {
     request(target.textContent.trim(), pendingUploads);
   });
   messages.addEventListener('click', (event) => {
+    if (handleUserMessageAction(event)) return;
     if (event.target.matches('[data-chat-retry]')) {
       request(lastFailed || '', pendingUploads);
     }

@@ -1,23 +1,204 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { BorderBeam } from 'border-beam';
-import { BotAvatar } from 'bot-avatars';
 import { Liquid } from 'liquid-gooey';
 import { ThinkingOrb } from 'thinking-orbs';
+import { VoiceBeam, useMicrophone } from 'voice-glow';
 
 const getTheme = () => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 const getReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function ChatbotInput({ panel }) {
-  const [focused, setFocused] = useState(false);
+function ChatbotLauncher({ panel }) {
+  const cardRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
   const [panelOpen, setPanelOpen] = useState(panel.classList.contains('is-open'));
+  const [fullscreen, setFullscreen] = useState(panel.classList.contains('is-fullscreen'));
   const [theme, setTheme] = useState(getTheme);
   const [reducedMotion, setReducedMotion] = useState(getReducedMotion);
+  const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
+
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    const parent = panel.parentElement;
+    if (!card || !parent || panel.parentElement === card) return undefined;
+
+    const placeholder = document.createComment('chatbot-panel-position');
+    parent.insertBefore(placeholder, panel);
+    card.appendChild(panel);
+
+    return () => {
+      if (placeholder.parentNode) placeholder.parentNode.insertBefore(panel, placeholder);
+      placeholder.remove();
+    };
+  }, [panel]);
 
   useEffect(() => {
     const panelObserver = new MutationObserver(() => {
       setPanelOpen(panel.classList.contains('is-open'));
+      setFullscreen(panel.classList.contains('is-fullscreen'));
+    });
+    const themeObserver = new MutationObserver(() => setTheme(getTheme()));
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setReducedMotion(motionQuery.matches);
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+
+    panelObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    motionQuery.addEventListener('change', updateMotionPreference);
+    window.addEventListener('resize', updateViewportWidth);
+
+    return () => {
+      panelObserver.disconnect();
+      themeObserver.disconnect();
+      motionQuery.removeEventListener('change', updateMotionPreference);
+      window.removeEventListener('resize', updateViewportWidth);
+    };
+  }, [panel]);
+
+  const labelVisible = expanded && !panelOpen;
+  const panelRadius = viewportWidth <= 420 ? 16 : viewportWidth <= 720 ? 18 : 22;
+  const launcherClass = [
+    'teryzon-chatbot-launcher-beam',
+    labelVisible && 'is-expanded',
+    panelOpen && 'is-panel-open',
+    fullscreen && 'is-panel-fullscreen'
+  ].filter(Boolean).join(' ');
+
+  return (
+    <BorderBeam
+      active={!reducedMotion}
+      borderRadius={fullscreen ? 0 : panelOpen ? panelRadius : labelVisible ? 32 : 29}
+      colorVariant="colorful"
+      duration={3.2}
+      size="pulse-outside"
+      strength={0.7}
+      theme={theme}
+      className={launcherClass}
+      style={{ position: 'fixed' }}
+    >
+      <div className="teryzon-chatbot-beam-content" ref={cardRef}>
+        <button
+          className="teryzon-chatbot-launcher"
+          type="button"
+          aria-label="Open Teryzon AI"
+          aria-controls="teryzon-chatbot-panel"
+          aria-expanded={panelOpen}
+          aria-hidden={panelOpen}
+          tabIndex={panelOpen ? -1 : 0}
+          disabled={panelOpen}
+          title="Ask Teryzon AI..."
+          onMouseEnter={() => setExpanded(true)}
+          onMouseLeave={() => setExpanded(false)}
+          onFocus={() => setExpanded(true)}
+          onBlur={() => setExpanded(false)}
+        >
+          <img src={theme === 'light' ? '/images/Chat%20bot%20animation1.svg' : '/images/Chat%20bot%20animation.svg'} alt="" />
+          {labelVisible && <span>Ask Teryzon AI...</span>}
+        </button>
+      </div>
+    </BorderBeam>
+  );
+}
+
+function ChatbotInput({ panel }) {
+  const { stream, supported, start, stop } = useMicrophone({ autoStart: false });
+  const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const speechPrefixRef = useRef('');
+  const silenceTimerRef = useRef(null);
+  const [focused, setFocused] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(panel.classList.contains('is-open'));
+  const [theme, setTheme] = useState(getTheme);
+  const [reducedMotion, setReducedMotion] = useState(getReducedMotion);
+  const [listening, setListening] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
+
+  const stopListening = () => {
+    window.clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = null;
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (recognition) recognition.stop();
+    stop();
+    setListening(false);
+  };
+
+  const startListening = () => {
+    if (listening) {
+      stopListening();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!supported || !SpeechRecognition) {
+      setVoiceError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    setVoiceError('');
+    speechPrefixRef.current = inputRef.current?.value.trim() || '';
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript || '')
+        .join(' ')
+        .trim();
+      const input = inputRef.current;
+      if (!input) return;
+      input.value = [speechPrefixRef.current, transcript].filter(Boolean).join(' ').slice(0, 4000);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (transcript) {
+        window.clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = window.setTimeout(stopListening, 1500);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (recognitionRef.current !== recognition) return;
+      window.clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+      recognitionRef.current = null;
+      stop();
+      setListening(false);
+      setVoiceError(event.error === 'not-allowed' ? 'Microphone permission was denied.' : 'Voice input stopped. Try again.');
+    };
+
+    recognition.onend = () => {
+      if (recognitionRef.current !== recognition) return;
+      recognitionRef.current = null;
+      stop();
+      setListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setListening(true);
+      Promise.resolve(start()).catch(() => {
+        if (recognitionRef.current !== recognition) return;
+        recognitionRef.current = null;
+        recognition.abort();
+        setListening(false);
+        setVoiceError('Microphone access was denied.');
+      });
+    } catch {
+      recognitionRef.current = null;
+      stop();
+      setListening(false);
+      setVoiceError('Unable to start voice input. Try again.');
+    }
+  };
+
+  useEffect(() => {
+    const panelObserver = new MutationObserver(() => {
+      const open = panel.classList.contains('is-open');
+      setPanelOpen(open);
+      if (!open) stopListening();
     });
     const themeObserver = new MutationObserver(() => setTheme(getTheme()));
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -31,7 +212,22 @@ function ChatbotInput({ panel }) {
       panelObserver.disconnect();
       themeObserver.disconnect();
       motionQuery.removeEventListener('change', updateMotionPreference);
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+      stop();
     };
+  }, [panel]);
+
+  useEffect(() => {
+    const form = panel.querySelector('.teryzon-chatbot-form');
+    form?.addEventListener('submit', stopListening, true);
+    return () => form?.removeEventListener('submit', stopListening, true);
+  }, [panel, listening]);
+
+  useEffect(() => {
+    const form = panel.querySelector('.teryzon-chatbot-form');
+    form?.addEventListener('submit', stopListening, true);
+    return () => form?.removeEventListener('submit', stopListening, true);
   }, [panel]);
 
   return (
@@ -44,15 +240,38 @@ function ChatbotInput({ panel }) {
       className="teryzon-chatbot-input-wrap"
       style={{ width: '100%' }}
     >
-      <textarea
-        className="teryzon-chatbot-input"
-        maxLength={4000}
-        rows={1}
-        placeholder="Ask Teryzon AI..."
-        aria-label="Message Teryzon AI"
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-      />
+      <VoiceBeam
+        active={panelOpen && !reducedMotion}
+        colorVariant="colorful"
+        stream={listening ? stream : null}
+        theme={theme}
+        className="teryzon-chatbot-voice-beam"
+      >
+        <textarea
+          ref={inputRef}
+          className="teryzon-chatbot-input"
+          maxLength={4000}
+          rows={1}
+          placeholder="Ask Teryzon AI..."
+          aria-label="Message Teryzon AI"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+      </VoiceBeam>
+      <button
+        className={`teryzon-chatbot-mic${listening ? ' is-listening' : ''}`}
+        type="button"
+        aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+        aria-pressed={listening}
+        title={voiceError || (listening ? 'Stop voice input' : 'Start voice input')}
+        onClick={startListening}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" />
+        </svg>
+      </button>
+      {voiceError && <span className="teryzon-chatbot-voice-error" role="status">{voiceError}</span>}
     </BorderBeam>
   );
 }
@@ -108,7 +327,7 @@ export function mountChatbotComponents({ inputHost, panel, launcherHost, uploadH
 
   flushSync(() => {
     inputRoot.render(<ChatbotInput panel={panel} />);
-    launcherRoot.render(<BotAvatar type="circle" size={48} shading="plastic" face="mouth" interactive={false} theme="auto" />);
+    launcherRoot.render(<ChatbotLauncher panel={panel} />);
     uploadRoot.render(<ChatbotUploadMenu menu={uploadHost} />);
   });
 
