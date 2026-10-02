@@ -429,7 +429,7 @@ const boot = async () => {
           <div class="teryzon-chatbot-input-host" data-chatbot-input-root>
             <textarea class="teryzon-chatbot-input" maxlength="4000" rows="1" placeholder="Ask Teryzon AI..." aria-label="Message Teryzon AI"></textarea>
           </div>
-          <button class="teryzon-chatbot-send" type="submit" aria-label="Send message">${icon('<path d="m5 12 14-7-3 14-4-6-7-1Z"/><path d="m12 13 7-8"/>')}</button>
+          <button class="teryzon-chatbot-send" type="submit" aria-label="Send message" title="Send message">${icon('<path d="M12 19V5M5 12l7-7 7 7"/>')}</button>
         </form>
       </div>
     </section>`);
@@ -475,18 +475,15 @@ const boot = async () => {
   let lastFailed = null;
   let pendingUploads = [];
   let replyPaused = false;
+  let replyRevealing = false;
   let resumeReply = null;
   let thinkingTimer = null;
   let thinkingOrbRoot = null;
   const thinkingStages = [
-    { label: 'Thinking…', state: 'working' },
-    { label: 'Agent listening…', state: 'listening' },
-    { label: 'Working…', state: 'working' },
     { label: 'Searching…', state: 'searching' },
+    { label: 'Thinking…', state: 'working' },
+    { label: 'Working…', state: 'working' },
     { label: 'Solving…', state: 'solving' },
-    { label: 'Agent planning…', state: 'composing' },
-    { label: 'Agent thinking…', state: 'working' },
-    { label: 'Agent shaping…', state: 'shaping' }
   ];
 
   const ensureActiveSession = () => {
@@ -553,14 +550,11 @@ const boot = async () => {
 
   const setReplyPaused = (paused) => {
     replyPaused = paused;
-    const button = messages.querySelector('[data-chat-pause]');
-    if (button) {
-      button.setAttribute('aria-label', paused ? 'Resume response' : 'Pause response');
-      button.title = paused ? 'Resume response' : 'Pause response';
-      button.innerHTML = paused
-        ? icon('<path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none"/>')
-        : icon('<path d="M8 5h3v14H8zM15 5h3v14h-3z" fill="currentColor" stroke="none"/>');
-    }
+    send.setAttribute('aria-label', paused ? 'Resume response' : 'Pause response');
+    send.title = paused ? 'Resume response' : 'Pause response';
+    send.innerHTML = paused
+      ? icon('<path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none"/>')
+      : icon('<path d="M8 5h3v14H8zM15 5h3v14h-3z" fill="currentColor" stroke="none"/>');
     if (!paused && resumeReply) {
       const resume = resumeReply;
       resumeReply = null;
@@ -577,17 +571,22 @@ const boot = async () => {
   const revealReply = async (content, session) => {
     const reply = { role: 'assistant', content: '', time: timestamp() };
     session.messages.push(reply);
-    messages.insertAdjacentHTML('beforeend', renderMessage(reply));
-    const bubble = messages.lastElementChild?.querySelector('.teryzon-chatbot-bubble');
-    const pauseButton = messages.querySelector('[data-chat-pause]');
-    if (pauseButton) pauseButton.hidden = false;
-    setThinkingStage(2);
+    let bubble = null;
+    replyRevealing = true;
+    send.disabled = false;
+    setReplyPaused(false);
+    setThinkingStage(thinkingStages.length - 1);
 
     const words = String(content).match(/\S+\s*/g) || [String(content)];
     for (const word of words) {
       await waitForReplyResume();
       reply.content += word;
-      if (bubble) bubble.innerHTML = renderMarkdown(reply.content);
+      if (!bubble) {
+        messages.insertAdjacentHTML('beforeend', renderMessage(reply));
+        bubble = messages.lastElementChild?.querySelector('.teryzon-chatbot-bubble');
+      } else {
+        bubble.innerHTML = `${renderMarkdown(reply.content)}<small class="teryzon-chatbot-time">${escapeHtml(reply.time)}</small>`;
+      }
       messages.scrollTop = messages.scrollHeight;
       await new Promise((resolve) => window.setTimeout(resolve, 38));
     }
@@ -599,7 +598,7 @@ const boot = async () => {
     input.disabled = value;
     if (value) {
       replyPaused = false;
-      messages.insertAdjacentHTML('beforeend', `<article class="teryzon-chatbot-message" data-typing><div class="teryzon-chatbot-bubble"><div class="teryzon-chatbot-thinking"><span class="teryzon-chatbot-thinking-orb" data-chatbot-thinking-orb data-orb-state="working"></span><span class="teryzon-chatbot-thinking-label" data-chatbot-thinking-label>Thinking…</span><button class="teryzon-chatbot-pause" data-chat-pause type="button" aria-label="Pause response" title="Pause response" hidden>${icon('<path d="M8 5h3v14H8zM15 5h3v14h-3z" fill="currentColor" stroke="none"/>')}</button></div></div></article>`);
+      messages.insertAdjacentHTML('beforeend', `<article class="teryzon-chatbot-message" data-typing><div class="teryzon-chatbot-thinking"><span class="teryzon-chatbot-thinking-orb" data-chatbot-thinking-orb data-orb-state="working"></span><span class="teryzon-chatbot-thinking-label" data-chatbot-thinking-label>Thinking…</span></div></article>`);
       const orbHost = messages.querySelector('[data-chatbot-thinking-orb]');
       thinkingOrbRoot = chatbotReact?.mountThinkingOrb?.(orbHost) || null;
       let stageIndex = 0;
@@ -609,11 +608,15 @@ const boot = async () => {
       }, 1400);
       messages.scrollTop = messages.scrollHeight;
     } else {
+      replyRevealing = false;
       window.clearInterval(thinkingTimer);
       thinkingTimer = null;
       thinkingOrbRoot?.unmount();
       thinkingOrbRoot = null;
-      setReplyPaused(false);
+      replyPaused = false;
+      send.setAttribute('aria-label', 'Send message');
+      send.title = 'Send message';
+      send.innerHTML = icon('<path d="M12 19V5M5 12l7-7 7 7"/>');
       messages.querySelector('[data-typing]')?.remove();
     }
   };
@@ -988,6 +991,11 @@ const boot = async () => {
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+    if (replyRevealing) {
+      setReplyPaused(!replyPaused);
+      return;
+    }
+    if (pending) return;
     const text = input.value;
     const attachments = [...pendingUploads];
     if (!text.trim() && !attachments.length) return;
@@ -1037,11 +1045,6 @@ const boot = async () => {
     request(target.textContent.trim(), pendingUploads);
   });
   messages.addEventListener('click', (event) => {
-    const pauseButton = event.target.closest('[data-chat-pause]');
-    if (pauseButton) {
-      setReplyPaused(!replyPaused);
-      return;
-    }
     if (event.target.matches('[data-chat-retry]')) {
       request(lastFailed || '', pendingUploads);
     }

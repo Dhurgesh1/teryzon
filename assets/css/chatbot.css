@@ -269,6 +269,7 @@
   align-items: center;
   background: transparent;
   border: 0;
+  border-radius: 50%;
   color: var(--teryzon-chat-muted);
   cursor: pointer;
   display: flex;
@@ -343,17 +344,6 @@
 
 .teryzon-chatbot-message.is-user .teryzon-chatbot-time { color: rgba(0, 0, 0, 0.72); }
 
-.teryzon-chatbot-typing {
-  color: var(--teryzon-chat-muted);
-  font-size: 1.1rem;
-  letter-spacing: 3px;
-  padding: 3px 2px;
-}
-
-.teryzon-chatbot-typing span { animation: teryzonChatTyping 1s infinite; display: inline-block; }
-.teryzon-chatbot-typing span:nth-child(2) { animation-delay: .15s; }
-.teryzon-chatbot-typing span:nth-child(3) { animation-delay: .3s; }
-
 .teryzon-chatbot-thinking {
   align-items: center;
   display: flex;
@@ -374,25 +364,6 @@
   font-weight: 600;
   -webkit-background-clip: text;
 }
-
-.teryzon-chatbot-pause {
-  align-items: center;
-  background: transparent;
-  border: 1px solid var(--teryzon-chat-line);
-  border-radius: 7px;
-  color: var(--teryzon-chat-ink);
-  cursor: pointer;
-  display: inline-flex;
-  height: 26px;
-  justify-content: center;
-  margin-left: auto;
-  padding: 0;
-  width: 26px;
-}
-
-.teryzon-chatbot-pause:hover { border-color: var(--teryzon-chat-muted); }
-.teryzon-chatbot-pause svg { height: 13px; width: 13px; }
-.teryzon-chatbot-pause[hidden] { display: none; }
 
 .teryzon-chatbot-attachment-row {
   display: flex;
@@ -563,7 +534,7 @@
 }
 
 .teryzon-chatbot-input-wrap {
-  border-radius: 10px;
+  border-radius: 16px;
   min-width: 0;
   position: relative;
   width: 100%;
@@ -626,7 +597,7 @@
 .teryzon-chatbot-input {
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid var(--teryzon-chat-line);
-  border-radius: 10px;
+  border-radius: 16px;
   display: block;
   color: var(--teryzon-chat-ink);
   flex: 1;
@@ -645,7 +616,7 @@
   align-items: center;
   background: var(--teryzon-chat-accent);
   border: 0;
-  border-radius: 10px;
+  border-radius: 50%;
   color: #000;
   cursor: pointer;
   display: flex;
@@ -657,11 +628,6 @@
 
 .teryzon-chatbot-send:disabled { cursor: not-allowed; opacity: .45; }
 .teryzon-chatbot-send svg { height: 18px; width: 18px; }
-
-@keyframes teryzonChatTyping {
-  0%, 60%, 100% { opacity: .25; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-3px); }
-}
 
 @keyframes teryzonChatMetalShimmer {
   to { background-position: -240% 0; }
@@ -790,7 +756,6 @@
     transition: none;
   }
 
-  .teryzon-chatbot-typing span { animation: none; }
   .teryzon-chatbot-thinking-label { animation: none; }
 }
 
