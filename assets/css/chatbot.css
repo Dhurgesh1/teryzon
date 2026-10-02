@@ -9,12 +9,12 @@
 
 .teryzon-chatbot-launcher {
   align-items: center;
-  background: var(--teryzon-chat-accent);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  border: 0;
   border-radius: 50%;
   bottom: max(24px, env(safe-area-inset-bottom));
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
-  color: #000;
+  box-shadow: none;
+  color: var(--teryzon-chat-ink);
   cursor: pointer;
   display: flex;
   height: 58px;
@@ -26,10 +26,7 @@
   z-index: 1000;
 }
 
-.teryzon-chatbot-launcher:hover {
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
-  transform: translateY(-3px);
-}
+.teryzon-chatbot-launcher:hover { transform: translateY(-3px); }
 
 .teryzon-chatbot-launcher:focus-visible,
 .teryzon-chatbot-button:focus-visible,
@@ -41,7 +38,8 @@
   outline-offset: 3px;
 }
 
-.teryzon-chatbot-launcher svg { height: 27px; width: 27px; }
+.teryzon-chatbot-avatar-root { align-items: center; display: flex; height: 100%; justify-content: center; width: 100%; }
+.teryzon-chatbot-avatar-root canvas { display: block; }
 
 .teryzon-chatbot-panel {
   background: var(--teryzon-chat-panel);
@@ -356,6 +354,46 @@
 .teryzon-chatbot-typing span:nth-child(2) { animation-delay: .15s; }
 .teryzon-chatbot-typing span:nth-child(3) { animation-delay: .3s; }
 
+.teryzon-chatbot-thinking {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+  min-height: 24px;
+}
+
+.teryzon-chatbot-thinking-orb,
+.teryzon-chatbot-thinking-orb canvas { display: block; height: 20px; width: 20px; }
+
+.teryzon-chatbot-thinking-label {
+  animation: teryzonChatMetalShimmer 2.4s linear infinite;
+  background: linear-gradient(105deg, #8e9aa3 0%, #f4f7f8 22%, #7b8790 42%, #e4e8eb 58%, #89959e 78%, #f4f7f8 100%);
+  background-clip: text;
+  background-size: 240% 100%;
+  color: transparent;
+  font-size: .74rem;
+  font-weight: 600;
+  -webkit-background-clip: text;
+}
+
+.teryzon-chatbot-pause {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--teryzon-chat-line);
+  border-radius: 7px;
+  color: var(--teryzon-chat-ink);
+  cursor: pointer;
+  display: inline-flex;
+  height: 26px;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0;
+  width: 26px;
+}
+
+.teryzon-chatbot-pause:hover { border-color: var(--teryzon-chat-muted); }
+.teryzon-chatbot-pause svg { height: 13px; width: 13px; }
+.teryzon-chatbot-pause[hidden] { display: none; }
+
 .teryzon-chatbot-attachment-row {
   display: flex;
   flex-wrap: wrap;
@@ -518,58 +556,67 @@
   position: relative;
 }
 
-.teryzon-chatbot-upload-menu {
-  background: var(--teryzon-chat-panel);
-  border: 1px solid var(--teryzon-chat-line);
-  border-radius: 14px;
-  bottom: calc(100% + 10px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  opacity: 1;
-  padding: 6px;
-  pointer-events: auto;
-  position: absolute;
-  right: 0;
-  transform: translateY(0);
-  transition: opacity .18s ease, transform .18s ease;
-  width: 170px;
-  z-index: 3;
+.teryzon-chatbot-input-host {
+  flex: 1;
+  min-width: 0;
+  order: 1;
 }
 
-.teryzon-chatbot-upload-menu[hidden] {
-  display: none;
+.teryzon-chatbot-input-wrap {
+  border-radius: 10px;
+  min-width: 0;
+  position: relative;
+  width: 100%;
+}
+
+.teryzon-chatbot-upload-menu {
+  flex: 0 0 42px;
+  height: 42px;
+  overflow: visible;
+  position: relative;
+  width: 42px;
+  order: 2;
+  z-index: 4;
+}
+
+.teryzon-chatbot-upload-menu.is-open { z-index: 5; }
+
+.teryzon-chatbot-liquid-menu {
+  height: 42px;
+  overflow: visible;
+  position: relative;
+  width: 42px;
+}
+
+.teryzon-chatbot-liquid-menu > div {
+  left: 0;
+  position: absolute;
+  top: 0;
 }
 
 .teryzon-chatbot-upload-menu button {
+  align-items: center;
   background: transparent;
-  border: 0;
-  border-radius: 10px;
+  border: 1px solid var(--teryzon-chat-line);
+  border-radius: 50%;
   color: var(--teryzon-chat-ink);
   cursor: pointer;
-  font: inherit;
-  padding: 10px 12px;
-  text-align: left;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+  width: 42px;
 }
+
+.teryzon-chatbot-upload-menu button:hover { background: rgba(255, 255, 255, 0.08); }
+.teryzon-chatbot-upload-menu button svg { flex: none; height: 18px; width: 18px; }
 
 .teryzon-chatbot-upload-menu button:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.teryzon-chatbot-upload-trigger {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--teryzon-chat-line);
-  border-radius: 10px;
-  color: var(--teryzon-chat-ink);
-  cursor: pointer;
-  display: flex;
-  flex: 0 0 42px;
-  height: 42px;
-  justify-content: center;
-  width: 42px;
-}
+.teryzon-chatbot-upload-trigger { z-index: 1; }
 
 .teryzon-chatbot-upload-trigger svg {
   height: 20px;
@@ -580,6 +627,7 @@
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid var(--teryzon-chat-line);
   border-radius: 10px;
+  display: block;
   color: var(--teryzon-chat-ink);
   flex: 1;
   font: inherit;
@@ -588,9 +636,10 @@
   min-height: 42px;
   padding: 10px 11px;
   resize: none;
+  width: 100%;
 }
 
-.teryzon-chatbot-input:focus { border-color: var(--teryzon-chat-accent); outline: 0; }
+.teryzon-chatbot-input:focus { border-color: transparent; outline: 0; }
 
 .teryzon-chatbot-send {
   align-items: center;
@@ -602,6 +651,7 @@
   display: flex;
   height: 42px;
   justify-content: center;
+  order: 3;
   width: 42px;
 }
 
@@ -611,6 +661,10 @@
 @keyframes teryzonChatTyping {
   0%, 60%, 100% { opacity: .25; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-3px); }
+}
+
+@keyframes teryzonChatMetalShimmer {
+  to { background-position: -240% 0; }
 }
 
 @media (max-width: 720px) {
@@ -737,6 +791,7 @@
   }
 
   .teryzon-chatbot-typing span { animation: none; }
+  .teryzon-chatbot-thinking-label { animation: none; }
 }
 
 html[data-theme="light"] .teryzon-chatbot-panel {

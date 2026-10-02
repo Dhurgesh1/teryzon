@@ -380,7 +380,7 @@ const renderMessage = (message) => {
   `;
 };
 
-const boot = () => {
+const boot = async () => {
   if (document.querySelector('.teryzon-chatbot-launcher')) return;
 
   const currentUrl = `${window.location.pathname || ''}${window.location.search || ''}${window.location.hash || ''}`.toLowerCase();
@@ -397,7 +397,7 @@ const boot = () => {
   const shouldHideLogo = legalRoutes.some((route) => currentUrl === route || currentUrl.endsWith(route) || currentUrl.includes(route));
 
   document.body.insertAdjacentHTML('beforeend', `
-    <button class="teryzon-chatbot-launcher" type="button" aria-label="Open Teryzon AI" aria-controls="teryzon-chatbot-panel" aria-expanded="false">${icon('<path d="M12 4a8 8 0 0 0-8 8c0 1.8.6 3.4 1.7 4.7L5 20l3.3-1.7A8 8 0 1 0 12 4Z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" stroke-width="2.4"/>')}</button>
+    <button class="teryzon-chatbot-launcher" type="button" aria-label="Open Teryzon AI" aria-controls="teryzon-chatbot-panel" aria-expanded="false"><span class="teryzon-chatbot-avatar-root" data-chatbot-avatar-root aria-hidden="true">${icon('<path d="M12 4a8 8 0 0 0-8 8c0 1.8.6 3.4 1.7 4.7L5 20l3.3-1.7A8 8 0 1 0 12 4Z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01" stroke-width="2.4"/>')}</span></button>
     <section class="teryzon-chatbot-panel" id="teryzon-chatbot-panel" role="dialog" aria-modal="false" aria-labelledby="teryzon-chatbot-title" aria-hidden="true">
       <aside class="teryzon-chatbot-sidebar">
         <div class="teryzon-chatbot-sidebar-header">
@@ -424,13 +424,11 @@ const boot = () => {
         <div class="teryzon-chatbot-upload-bar" aria-live="polite"></div>
         <div class="teryzon-chatbot-quick-wrap"></div>
         <form class="teryzon-chatbot-form">
-          <div class="teryzon-chatbot-upload-menu" hidden>
-            <button type="button" data-upload-kind="file">File upload</button>
-            <button type="button" data-upload-kind="image">Image upload</button>
-          </div>
+          <div class="teryzon-chatbot-upload-menu" data-chatbot-upload-root></div>
           <input class="teryzon-chatbot-file-input" type="file" accept=".pdf,.doc,.docx,.txt,.csv,.json,image/*" multiple hidden>
-          <button class="teryzon-chatbot-upload-trigger" type="button" aria-label="Attach file or image">${icon('<path d="M12 5v14M5 12h14"/>')}</button>
-          <textarea class="teryzon-chatbot-input" maxlength="4000" rows="1" placeholder="Ask Teryzon AI..." aria-label="Message Teryzon AI"></textarea>
+          <div class="teryzon-chatbot-input-host" data-chatbot-input-root>
+            <textarea class="teryzon-chatbot-input" maxlength="4000" rows="1" placeholder="Ask Teryzon AI..." aria-label="Message Teryzon AI"></textarea>
+          </div>
           <button class="teryzon-chatbot-send" type="submit" aria-label="Send message">${icon('<path d="m5 12 14-7-3 14-4-6-7-1Z"/><path d="m12 13 7-8"/>')}</button>
         </form>
       </div>
@@ -438,6 +436,20 @@ const boot = () => {
 
   const launcher = document.querySelector('.teryzon-chatbot-launcher');
   const panel = document.querySelector('.teryzon-chatbot-panel');
+  const inputHost = panel.querySelector('[data-chatbot-input-root]');
+  const uploadMenu = panel.querySelector('.teryzon-chatbot-upload-menu');
+  let chatbotReact = null;
+  try {
+    chatbotReact = await import('/assets/js/chatbot-input.bundle.js');
+    chatbotReact.mountChatbotComponents({
+      inputHost,
+      panel,
+      launcherHost: launcher.querySelector('[data-chatbot-avatar-root]'),
+      uploadHost: uploadMenu
+    });
+  } catch (error) {
+    console.error('Unable to load chatbot enhancements.', error);
+  }
   const sidebarList = panel.querySelector('.teryzon-chatbot-sidebar-list');
   const messages = panel.querySelector('.teryzon-chatbot-messages');
   const uploadBar = panel.querySelector('.teryzon-chatbot-upload-bar');
@@ -445,7 +457,6 @@ const boot = () => {
   const form = panel.querySelector('.teryzon-chatbot-form');
   const send = panel.querySelector('.teryzon-chatbot-send');
   const quickWrap = panel.querySelector('.teryzon-chatbot-quick-wrap');
-  const uploadMenu = panel.querySelector('.teryzon-chatbot-upload-menu');
   const fileInput = panel.querySelector('.teryzon-chatbot-file-input');
   const uploadTrigger = panel.querySelector('.teryzon-chatbot-upload-trigger');
   const sidebarToggle = panel.querySelector('[data-chat-action="toggle-sidebar"]');
@@ -463,6 +474,20 @@ const boot = () => {
   let pending = false;
   let lastFailed = null;
   let pendingUploads = [];
+  let replyPaused = false;
+  let resumeReply = null;
+  let thinkingTimer = null;
+  let thinkingOrbRoot = null;
+  const thinkingStages = [
+    { label: 'Thinking…', state: 'working' },
+    { label: 'Agent listening…', state: 'listening' },
+    { label: 'Working…', state: 'working' },
+    { label: 'Searching…', state: 'searching' },
+    { label: 'Solving…', state: 'solving' },
+    { label: 'Agent planning…', state: 'composing' },
+    { label: 'Agent thinking…', state: 'working' },
+    { label: 'Agent shaping…', state: 'shaping' }
+  ];
 
   const ensureActiveSession = () => {
     if (!sessions.some((session) => session.id === activeChatId)) {
@@ -516,14 +541,79 @@ const boot = () => {
     quickWrap.innerHTML = activeSession.messages.length ? '' : quickActions.map((action) => `<button class="teryzon-chatbot-quick" type="button">${escapeHtml(action)}</button>`).join('');
   };
 
+  const setThinkingStage = (index) => {
+    const typing = messages.querySelector('[data-typing]');
+    if (!typing) return;
+    const stage = thinkingStages[index % thinkingStages.length];
+    const orb = typing.querySelector('[data-chatbot-thinking-orb]');
+    const label = typing.querySelector('[data-chatbot-thinking-label]');
+    if (orb) orb.dataset.orbState = stage.state;
+    if (label) label.textContent = stage.label;
+  };
+
+  const setReplyPaused = (paused) => {
+    replyPaused = paused;
+    const button = messages.querySelector('[data-chat-pause]');
+    if (button) {
+      button.setAttribute('aria-label', paused ? 'Resume response' : 'Pause response');
+      button.title = paused ? 'Resume response' : 'Pause response';
+      button.innerHTML = paused
+        ? icon('<path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none"/>')
+        : icon('<path d="M8 5h3v14H8zM15 5h3v14h-3z" fill="currentColor" stroke="none"/>');
+    }
+    if (!paused && resumeReply) {
+      const resume = resumeReply;
+      resumeReply = null;
+      resume();
+    }
+  };
+
+  const waitForReplyResume = async () => {
+    while (replyPaused) {
+      await new Promise((resolve) => { resumeReply = resolve; });
+    }
+  };
+
+  const revealReply = async (content, session) => {
+    const reply = { role: 'assistant', content: '', time: timestamp() };
+    session.messages.push(reply);
+    messages.insertAdjacentHTML('beforeend', renderMessage(reply));
+    const bubble = messages.lastElementChild?.querySelector('.teryzon-chatbot-bubble');
+    const pauseButton = messages.querySelector('[data-chat-pause]');
+    if (pauseButton) pauseButton.hidden = false;
+    setThinkingStage(2);
+
+    const words = String(content).match(/\S+\s*/g) || [String(content)];
+    for (const word of words) {
+      await waitForReplyResume();
+      reply.content += word;
+      if (bubble) bubble.innerHTML = renderMarkdown(reply.content);
+      messages.scrollTop = messages.scrollHeight;
+      await new Promise((resolve) => window.setTimeout(resolve, 38));
+    }
+  };
+
   const setPending = (value) => {
     pending = value;
     send.disabled = value;
     input.disabled = value;
     if (value) {
-      messages.insertAdjacentHTML('beforeend', `<article class="teryzon-chatbot-message" data-typing><div class="teryzon-chatbot-bubble"><div class="teryzon-chatbot-typing" aria-label="Teryzon AI is typing"><span>●</span><span>●</span><span>●</span></div></div></article>`);
+      replyPaused = false;
+      messages.insertAdjacentHTML('beforeend', `<article class="teryzon-chatbot-message" data-typing><div class="teryzon-chatbot-bubble"><div class="teryzon-chatbot-thinking"><span class="teryzon-chatbot-thinking-orb" data-chatbot-thinking-orb data-orb-state="working"></span><span class="teryzon-chatbot-thinking-label" data-chatbot-thinking-label>Thinking…</span><button class="teryzon-chatbot-pause" data-chat-pause type="button" aria-label="Pause response" title="Pause response" hidden>${icon('<path d="M8 5h3v14H8zM15 5h3v14h-3z" fill="currentColor" stroke="none"/>')}</button></div></div></article>`);
+      const orbHost = messages.querySelector('[data-chatbot-thinking-orb]');
+      thinkingOrbRoot = chatbotReact?.mountThinkingOrb?.(orbHost) || null;
+      let stageIndex = 0;
+      thinkingTimer = window.setInterval(() => {
+        stageIndex += 1;
+        setThinkingStage(stageIndex);
+      }, 1400);
       messages.scrollTop = messages.scrollHeight;
     } else {
+      window.clearInterval(thinkingTimer);
+      thinkingTimer = null;
+      thinkingOrbRoot?.unmount();
+      thinkingOrbRoot = null;
+      setReplyPaused(false);
       messages.querySelector('[data-typing]')?.remove();
     }
   };
@@ -555,7 +645,8 @@ const boot = () => {
   };
 
   const closeUploadMenu = () => {
-    uploadMenu.hidden = true;
+    if (uploadMenu.contains(document.activeElement)) uploadTrigger.focus();
+    uploadMenu.classList.remove('is-open');
     uploadTrigger.setAttribute('aria-expanded', 'false');
   };
 
@@ -786,7 +877,9 @@ const boot = () => {
       const data = await response.json();
       if (!data.message) throw new Error('empty response');
 
-      activeSession.messages.push({ role: 'assistant', content: String(data.message), time: timestamp() });
+      window.clearInterval(thinkingTimer);
+      thinkingTimer = null;
+      await revealReply(String(data.message), activeSession);
       activeSession.updatedAt = Date.now();
       lastFailed = null;
       if (hasDocumentContext && !data.message.toLowerCase().includes('document')) {
@@ -915,8 +1008,8 @@ const boot = () => {
   });
 
   uploadTrigger.addEventListener('click', () => {
-    const shouldOpen = uploadMenu.hidden;
-    uploadMenu.hidden = !shouldOpen;
+    const shouldOpen = !uploadMenu.classList.contains('is-open');
+    uploadMenu.classList.toggle('is-open', shouldOpen);
     uploadTrigger.setAttribute('aria-expanded', String(shouldOpen));
   });
 
@@ -933,7 +1026,7 @@ const boot = () => {
   launcher.addEventListener('click', () => togglePanel(true));
 
   document.addEventListener('click', (event) => {
-    const clickedWithinUpload = event.target.closest('.teryzon-chatbot-upload-menu') || event.target.closest('.teryzon-chatbot-upload-trigger');
+    const clickedWithinUpload = event.target.closest('.teryzon-chatbot-upload-menu');
     if (!clickedWithinUpload) {
       closeUploadMenu();
     }
@@ -944,6 +1037,11 @@ const boot = () => {
     request(target.textContent.trim(), pendingUploads);
   });
   messages.addEventListener('click', (event) => {
+    const pauseButton = event.target.closest('[data-chat-pause]');
+    if (pauseButton) {
+      setReplyPaused(!replyPaused);
+      return;
+    }
     if (event.target.matches('[data-chat-retry]')) {
       request(lastFailed || '', pendingUploads);
     }
