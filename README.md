@@ -158,6 +158,50 @@ New measurements can be collected and compared with the original readings.
 | **Wheels**                  | Mobile platform                      |
 | **Battery System**          | Powers the prototype                 |
 
+### Rover sensor wiring and setup
+
+The rover sketch targets the ESP32-S3 DevKitM-1 and Arduino-ESP32 core 2.0.17.
+The sensor pins below do not overlap the existing motor, servo, or OLED pins:
+
+| Sensor signal | ESP32-S3 pin |
+| --- | --- |
+| Xcluma pH amplifier analog OUT, through a divider | GPIO 2 |
+| SP Electron soil-moisture digital DO | GPIO 1 |
+| Waterproof DS18B20 DATA | GPIO 11 |
+| Robodo SEN50 DHT11 DATA | GPIO 12 |
+
+Use a common ground. Connect the DS18B20 DATA line to 3.3 V through a **4.7 kOhm
+pull-up resistor**. Power the digital moisture module and DHT11 module from 3.3 V
+when supported; if either module's DO/DATA output can exceed 3.3 V, add an
+appropriate level shifter.
+
+**Protect the pH ADC input:** never connect the amplifier output directly to
+GPIO 2. With the pH amplifier output confirmed to stay at or below 5 V, connect
+a 10 kOhm resistor from amplifier OUT to GPIO 2 and another 10 kOhm resistor
+from GPIO 2 to GND. This halves the voltage (at most 2.5 V at the ADC). If the
+amplifier can output above 5 V, select a divider for its verified maximum so
+GPIO 2 stays below 3.0 V under all conditions. The sketch reports both the
+reconstructed amplifier output voltage and the divided ADC-pin voltage. If you
+change the divider, update `PH_DIVIDER_RATIO` to match its output/input ratio.
+
+Install these Arduino libraries using Library Manager: **OneWire**,
+**DallasTemperature**, and **DHT sensor library** (Adafruit). The DS18B20
+conversion is asynchronous; readings are refreshed about every two seconds.
+DHT11 readings are also sampled about every two seconds. Disconnected or
+invalid temperature/humidity readings are shown as unavailable, not as
+fabricated values.
+
+The soil-moisture card reports only **WET** or **DRY** from the digital DO pin;
+it is not a percentage. Change `SOIL_MOISTURE_WET_LEVEL` in
+`rover/rover.ino` if the module's active output polarity differs.
+
+The pH estimate is disabled until calibrated. Rinse the probe between pH 4.00
+and 7.00 buffer solutions, measure and record the amplifier OUT voltage for
+each buffer using the dashboard, enter those two values in
+`PH4_CALIBRATION_VOLTAGE` and `PH7_CALIBRATION_VOLTAGE`, then set
+`PH_CALIBRATION_CONFIGURED` to `true` in `rover/rover.ino`. Until then the
+dashboard/API provide ADC raw counts and voltages but return pH as unavailable.
+
 ---
 
 ## Technology Stack

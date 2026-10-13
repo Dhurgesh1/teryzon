@@ -242,3 +242,22 @@ drop policy if exists "Users can delete their own avatar" on storage.objects;
 create policy "Users can delete their own avatar"
 on storage.objects for delete to authenticated
 using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create table if not exists public.soil_inspections (
+id uuid primary key default gen_random_uuid(),
+user_id uuid not null references auth.users(id) on delete cascade,
+captured_at timestamptz not null default now(),
+inspection_data jsonb not null,
+readings jsonb not null,
+ai_suggestions text,
+created_at timestamptz not null default now()
+);
+
+alter table public.soil_inspections enable row level security;
+grant select, insert, update on public.soil_inspections to authenticated;
+
+drop policy if exists "Users manage their own soil inspections" on public.soil_inspections;
+create policy "Users manage their own soil inspections"
+on public.soil_inspections for all to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());

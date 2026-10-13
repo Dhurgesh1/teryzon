@@ -288,6 +288,107 @@
       margin: 18px 0 0;
     }
 
+    .inspection-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      margin-top: 38px;
+      padding: clamp(20px, 4vw, 32px);
+    }
+
+    .sr-only {
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
+    .inspection-panel h2 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      letter-spacing: -0.04em;
+      margin: 12px 0;
+    }
+
+    .inspection-panel p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .inspection-json {
+      background: var(--input);
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      color: var(--ink);
+      display: block;
+      font: 0.86rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+      min-height: 170px;
+      padding: 14px;
+      resize: vertical;
+      width: 100%;
+    }
+
+    .inspection-actions {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .inspection-save-button {
+      background: var(--accent);
+      border: 0;
+      border-radius: 999px;
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      padding: 13px 20px;
+    }
+
+    .inspection-save-button:disabled {
+      cursor: wait;
+      opacity: .6;
+    }
+
+    .inspection-message {
+      color: var(--muted);
+      min-height: 1.5em;
+    }
+
+    .inspection-suggestions {
+      border-left: 2px solid var(--accent);
+      line-height: 1.7;
+      margin-top: 24px;
+      padding: 2px 0 2px 18px;
+      white-space: pre-wrap;
+    }
+
+    .inspection-history {
+      border-top: 1px solid var(--line);
+      margin-top: 26px;
+      padding-top: 20px;
+    }
+
+    .inspection-history-item {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 0;
+    }
+
+    .inspection-history-item time {
+      color: var(--muted);
+      display: block;
+      font-size: .85rem;
+      margin-bottom: 5px;
+    }
+
+    .inspection-history-item p {
+      margin: 0;
+    }
+
     .profile-dialog {
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -1142,17 +1243,34 @@
       </div>
 
       <section class="reading-grid" aria-label="Latest soil readings">
-        <article class="reading"><span>Moisture</span><strong>42%</strong><small>Healthy range</small></article>
-        <article class="reading"><span>Temperature</span><strong>24.8°C</strong><small>Stable</small></article>
-        <article class="reading"><span>pH level</span><strong>6.7</strong><small>Optimal</small></article>
-        <article class="reading"><span>Conductivity</span><strong>318</strong><small>µS/cm</small></article>
+        <article class="reading"><span>Soil moisture</span><strong id="dashboard-moisture">--</strong><small>Latest imported scan</small></article>
+        <article class="reading"><span>Soil temperature</span><strong id="dashboard-temperature">--</strong><small>Latest imported scan</small></article>
+        <article class="reading"><span>pH level</span><strong id="dashboard-ph">--</strong><small>Latest imported scan</small></article>
+        <article class="reading"><span>Air humidity</span><strong id="dashboard-humidity">--</strong><small>Latest imported scan</small></article>
+      </section>
+
+      <section class="inspection-panel" aria-labelledby="inspection-import-title">
+        <p class="eyebrow">Rover inspection</p>
+        <h2 id="inspection-import-title">Import a field scan</h2>
+        <p>Paste the JSON copied by <strong>Stop inspection</strong>. Your scan will be saved to your account and Teryzon AI will suggest what to investigate next. Suggestions are interpretations, not lab-certified diagnoses.</p>
+        <label class="sr-only" for="inspection-json">Inspection JSON</label>
+        <textarea class="inspection-json" id="inspection-json" spellcheck="false" placeholder='Paste the copied {"format":"teryzon-inspection-v1", ...} JSON here'></textarea>
+        <div class="inspection-actions">
+          <button class="inspection-save-button" id="save-inspection" type="button">Save scan &amp; get AI suggestions</button>
+          <p class="inspection-message" id="inspection-message" role="status" aria-live="polite"></p>
+        </div>
+        <section class="inspection-suggestions" id="inspection-suggestions" aria-label="AI ground suggestions" hidden></section>
+        <section class="inspection-history" aria-label="Recent saved inspections">
+          <p class="eyebrow">Recent saved inspections</p>
+          <div id="inspection-history-list"><p>No inspections saved yet.</p></div>
+        </section>
       </section>
 
       <div class="workspace-grid">
         <section class="dashboard-band">
           <p class="eyebrow">Workspace status</p>
-          <h2>Ready for your first field scan.</h2>
-          <p>Connect a Teryzon rover or select a project to begin collecting readings, tracking changes, and building a clearer picture of your soil.</p>
+          <h2>Your ground, measured over time.</h2>
+          <p>Import a rover scan above to build a record of your soil readings and receive AI-assisted suggestions for further investigation.</p>
         </section>
       </div>
     </div>
@@ -1716,6 +1834,169 @@
       }
     };
 
+    const inspectionInput = document.querySelector('#inspection-json');
+    const saveInspectionButton = document.querySelector('#save-inspection');
+    const inspectionMessage = document.querySelector('#inspection-message');
+    const inspectionSuggestions = document.querySelector('#inspection-suggestions');
+    const inspectionHistoryList = document.querySelector('#inspection-history-list');
+
+    const displayReading = (value, suffix = '') => {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+      return `${value}${suffix}`;
+    };
+
+    const updateLatestReadings = (readings) => {
+      const moisture = readings.soilMoisturePct;
+      document.querySelector('#dashboard-moisture').textContent =
+        typeof moisture === 'number' ? displayReading(moisture, '%') : (readings.soilMoisture || '--');
+      document.querySelector('#dashboard-temperature').textContent = displayReading(readings.soilTemperature, '°C');
+      document.querySelector('#dashboard-ph').textContent = displayReading(readings.soilPH);
+      document.querySelector('#dashboard-humidity').textContent = displayReading(readings.relativeHumidity, '%');
+    };
+
+    const renderInspectionHistory = (inspections) => {
+      inspectionHistoryList.replaceChildren();
+      if (!inspections.length) {
+        inspectionHistoryList.textContent = 'No inspections saved yet.';
+        return;
+      }
+
+      inspections.forEach((inspection) => {
+        const item = document.createElement('article');
+        item.className = 'inspection-history-item';
+        const time = document.createElement('time');
+        time.dateTime = inspection.created_at;
+        time.textContent = new Date(inspection.created_at).toLocaleString();
+        const summary = document.createElement('p');
+        const readings = inspection.readings || {};
+        summary.textContent = [
+          readings.soilMoisture || (typeof readings.soilMoisturePct === 'number' ? `${readings.soilMoisturePct}% moisture` : 'Moisture unavailable'),
+          typeof readings.soilTemperature === 'number' ? `${readings.soilTemperature}°C soil` : null,
+          typeof readings.soilPH === 'number' ? `pH ${readings.soilPH}` : null
+        ].filter(Boolean).join(' · ');
+        item.append(time, summary);
+        if (inspection.ai_suggestions) {
+          const suggestion = document.createElement('p');
+          suggestion.textContent = inspection.ai_suggestions;
+          item.append(suggestion);
+        }
+        inspectionHistoryList.append(item);
+      });
+    };
+
+    const loadInspectionHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('soil_inspections')
+          .select('id, readings, ai_suggestions, created_at')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (error) {
+          inspectionHistoryList.textContent = `Unable to load saved inspections: ${error.message}`;
+          return;
+        }
+        renderInspectionHistory(data || []);
+        if (data?.length) updateLatestReadings(data[0].readings || {});
+      } catch (error) {
+        inspectionHistoryList.textContent = `Unable to load saved inspections: ${error.message || 'Please try again.'}`;
+      }
+    };
+
+    saveInspectionButton.addEventListener('click', async () => {
+      saveInspectionButton.disabled = true;
+      inspectionMessage.textContent = '';
+      inspectionSuggestions.hidden = true;
+      let scanSaved = false;
+
+      let inspection;
+      let readings;
+      try {
+        inspection = JSON.parse(inspectionInput.value);
+        if (!inspection || typeof inspection !== 'object' || Array.isArray(inspection)) {
+          throw new Error('The JSON must be an inspection object.');
+        }
+        readings = inspection.readings &&
+          typeof inspection.readings === 'object' &&
+          !Array.isArray(inspection.readings)
+          ? inspection.readings
+          : inspection;
+        const knownFields = ['soilMoisture', 'soilMoisturePct', 'soilTemperature', 'airTemperature', 'relativeHumidity', 'soilPH'];
+        if (!knownFields.some((field) => readings[field] !== undefined && readings[field] !== null)) {
+          throw new Error('No soil or air sensor readings were found in that JSON.');
+        }
+      } catch (error) {
+        inspectionMessage.textContent = error instanceof SyntaxError
+          ? 'That is not valid JSON. Paste the complete code copied from the rover.'
+          : error.message;
+        saveInspectionButton.disabled = false;
+        return;
+      }
+
+      inspectionMessage.textContent = 'Saving inspection…';
+      try {
+        const { data: savedInspection, error: saveError } = await supabase
+          .from('soil_inspections')
+          .insert({
+            user_id: currentUser.id,
+            inspection_data: inspection,
+            readings
+          })
+          .select('id, readings, ai_suggestions, created_at')
+          .single();
+        if (saveError) throw saveError;
+
+        scanSaved = true;
+        inspectionInput.value = '';
+        updateLatestReadings(readings);
+        inspectionMessage.textContent = 'Scan saved. Asking Teryzon AI for ground suggestions…';
+        const { data: aiData, error: aiError } = await supabase.functions.invoke('teryzon-chat', {
+          body: {
+            messages: [{
+              role: 'user',
+              content: `Interpret this rover soil inspection for the user. Give concise, practical AI suggestions of the ground and what to measure or investigate next. Clearly separate recorded measurements from possible interpretations, state uncertainty, do not invent missing values, and do not diagnose soil from these limited readings. Mention if pH is uncalibrated. Inspection readings JSON: ${JSON.stringify(readings)}`
+            }]
+          }
+        });
+
+        if (aiError) {
+          inspectionMessage.textContent = `Scan saved, but AI suggestions are unavailable: ${aiError.message}`;
+          await loadInspectionHistory();
+          return;
+        }
+        if (typeof aiData?.message !== 'string' || !aiData.message.trim()) {
+          inspectionMessage.textContent = 'Scan saved, but the AI returned no suggestions.';
+          await loadInspectionHistory();
+          return;
+        }
+
+        const { error: updateError } = await supabase
+          .from('soil_inspections')
+          .update({ ai_suggestions: aiData.message })
+          .eq('id', savedInspection.id)
+          .eq('user_id', currentUser.id);
+        if (updateError) {
+          inspectionSuggestions.textContent = aiData.message;
+          inspectionSuggestions.hidden = false;
+          inspectionMessage.textContent = `AI suggestions are ready, but could not be saved with the scan: ${updateError.message}`;
+          await loadInspectionHistory();
+          return;
+        }
+
+        inspectionSuggestions.textContent = aiData.message;
+        inspectionSuggestions.hidden = false;
+        inspectionMessage.textContent = 'Scan saved and AI ground suggestions are ready.';
+        await loadInspectionHistory();
+      } catch (error) {
+        inspectionMessage.textContent = scanSaved
+          ? `Scan saved, but AI suggestions could not be completed: ${error.message || 'Please try again.'}`
+          : `Could not save the inspection: ${error.message || 'Please try again.'}`;
+        if (scanSaved) await loadInspectionHistory();
+      } finally {
+        saveInspectionButton.disabled = false;
+      }
+    });
+
     const bootstrap = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -1731,6 +2012,7 @@
         syncUserProfileControls();
         applyStoredPreferences();
         authStatusValue.textContent = 'Protected session active';
+        await loadInspectionHistory();
         loadAnnouncements();
       } catch (error) {
           window.location.replace('/login');

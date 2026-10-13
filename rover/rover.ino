@@ -49,6 +49,12 @@
   SERVO:
     Signal = GPIO 10
 
+  SENSORS:
+    pH analog OUT = GPIO 2 (through a 10k/10k voltage divider)
+    Soil moisture DO = GPIO 1
+    DS18B20 DATA = GPIO 11 (4.7k pull-up to 3.3V)
+    DHT11 DATA = GPIO 12
+
   ============================================================
 */
 
@@ -58,6 +64,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 #include <ESP32Servo.h>
+#include <math.h>
 
 
 // ============================================================
@@ -115,6 +122,124 @@ Adafruit_SH1106G display(128, 64, &Wire, -1);
 
 #define SERVO_STEP_DELAY 15
 
+// ============================================================
+// ENVIRONMENT SENSORS
+// The pH amplifier output must be divided before it reaches the ESP32-S3 ADC.
+// ============================================================
+
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <DHT.h>
+
+#define SOIL_MOISTURE_PIN 1   // SP Electron digital DO
+#define PH_SENSOR_PIN 2       // pH amplifier OUT through a 10k/10k divider
+#define SOIL_TEMP_PIN 11      // DS18B20 DATA -> GPIO11
+#define AIR_SENSOR_PIN 12     // DHT11 DATA -> GPIO12
+#define AIR_SENSOR_TYPE DHT11
+
+// Set to HIGH if your digital module asserts HIGH when its output indicates wet.
+const uint8_t SOIL_MOISTURE_WET_LEVEL = LOW;
+
+// pH calibration: enter the dashboard's reconstructed amplifier OUT voltages
+// measured in pH 4.00 and 7.00 buffer solutions.
+// Set PH_CALIBRATION_CONFIGURED true only after both measurements are entered.
+const bool PH_CALIBRATION_CONFIGURED = false;
+const float PH4_CALIBRATION_VOLTAGE = 0.00f;
+const float PH7_CALIBRATION_VOLTAGE = 0.00f;
+const float PH_DIVIDER_RATIO = 0.5f; // Equal 10k resistors: ADC voltage is half OUT.
+const float PH_ADC_MAX_SAFE_VOLTAGE = 3.0f;
+
+OneWire oneWire(SOIL_TEMP_PIN);
+DallasTemperature soilTempSensor(&oneWire);
+DHT airSensor(AIR_SENSOR_PIN, AIR_SENSOR_TYPE);
+
+float soilTemperatureC = NAN;
+float soilPH = NAN;
+float airTemperatureC = NAN;
+float relativeHumidityPct = NAN;
+float phAdcVoltage = NAN;
+float phOutputVoltage = NAN;
+int soilMoistureRaw = -1;
+int phRaw = -1;
+bool soilMoistureWet = false;
+unsigned long lastSensorRead = 0;
+const unsigned long SENSOR_INTERVAL_MS = 2000;
+const unsigned long SOIL_TEMP_CONVERSION_MS = 750;
+unsigned long soilTempConversionStarted = 0;
+unsigned long lastSoilTempRequest = 0;
+bool soilTempConversionPending = false;
+bool oledAvailable = false;
+unsigned long lastOLEDUpdate = 0;
+const unsigned long OLED_UPDATE_INTERVAL_MS = 2000;
+String inspectionReadingsJson = "null";
+
+bool phCalibrationValid() {
+  return PH_CALIBRATION_CONFIGURED &&
+         PH4_CALIBRATION_VOLTAGE >= 0.0f &&
+         PH4_CALIBRATION_VOLTAGE <= 6.0f &&
+         PH7_CALIBRATION_VOLTAGE >= 0.0f &&
+         PH7_CALIBRATION_VOLTAGE <= 6.0f &&
+         fabsf(PH7_CALIBRATION_VOLTAGE - PH4_CALIBRATION_VOLTAGE) > 0.01f;
+}
+
+void readEnvironmentSensors() {
+  soilMoistureRaw = digitalRead(SOIL_MOISTURE_PIN);
+  soilMoistureWet = soilMoistureRaw == SOIL_MOISTURE_WET_LEVEL;
+
+  phRaw = analogRead(PH_SENSOR_PIN);
+  phAdcVoltage = analogReadMilliVolts(PH_SENSOR_PIN) / 1000.0f;
+  if (phAdcVoltage <= PH_ADC_MAX_SAFE_VOLTAGE) {
+    phOutputVoltage = phAdcVoltage / PH_DIVIDER_RATIO;
+  } else {
+    phOutputVoltage = NAN;
+  }
+
+  if (phCalibrationValid() && !isnan(phOutputVoltage)) {
+    soilPH = 4.0f + ((phOutputVoltage - PH4_CALIBRATION_VOLTAGE) * 3.0f /
+                     (PH7_CALIBRATION_VOLTAGE - PH4_CALIBRATION_VOLTAGE));
+    soilPH = constrain(soilPH, 0.0f, 14.0f);
+  } else {
+    soilPH = NAN;
+  }
+
+  float airTemperature = airSensor.readTemperature();
+  float humidity = airSensor.readHumidity();
+  airTemperatureC =
+    !isnan(airTemperature) && airTemperature >= 0.0f && airTemperature <= 50.0f
+    ? airTemperature
+    : NAN;
+  relativeHumidityPct =
+    !isnan(humidity) && humidity >= 0.0f && humidity <= 100.0f
+    ? humidity
+    : NAN;
+}
+
+void updateSoilTemperature() {
+  unsigned long now = millis();
+
+  if (soilTempConversionPending &&
+      now - soilTempConversionStarted >= SOIL_TEMP_CONVERSION_MS) {
+    float temperature = soilTempSensor.getTempCByIndex(0);
+    if (temperature != DEVICE_DISCONNECTED_C &&
+        !isnan(temperature) &&
+        temperature > -55.0f &&
+        temperature < 125.0f) {
+      soilTemperatureC = temperature;
+    } else {
+      soilTemperatureC = NAN;
+    }
+    soilTempConversionPending = false;
+  }
+
+  if (!soilTempConversionPending &&
+      now - lastSoilTempRequest >= SENSOR_INTERVAL_MS) {
+    soilTempSensor.requestTemperatures();
+    soilTempConversionStarted = now;
+    lastSoilTempRequest = now;
+    soilTempConversionPending = true;
+  }
+}
+
 Servo probeServo;
 
 bool servoAvailable = false;
@@ -125,6 +250,31 @@ bool probeMovingDown = false;
 bool probeMovingUp = false;
 
 unsigned long lastServoMove = 0;
+
+// Automated soil-inspection sequence: lower -> settle -> sample -> raise.
+enum InspectionState { INSPECT_IDLE, INSPECT_LOWERING, INSPECT_SETTLING, INSPECT_READING, INSPECT_RAISING, INSPECT_COMPLETE, INSPECT_FAILED };
+InspectionState inspectionState = INSPECT_IDLE;
+unsigned long inspectionStateStarted = 0;
+const unsigned long INSPECTION_SETTLE_MS = 2500;
+
+const char* inspectionStateName() {
+  switch (inspectionState) {
+    case INSPECT_LOWERING: return "lowering";
+    case INSPECT_SETTLING: return "settling";
+    case INSPECT_READING: return "reading";
+    case INSPECT_RAISING: return "raising";
+    case INSPECT_COMPLETE: return "complete";
+    case INSPECT_FAILED: return "failed";
+    default: return "idle";
+  }
+}
+
+bool inspectionInProgress() {
+  return inspectionState == INSPECT_LOWERING ||
+         inspectionState == INSPECT_SETTLING ||
+         inspectionState == INSPECT_READING ||
+         inspectionState == INSPECT_RAISING;
+}
 
 
 // ============================================================
@@ -892,6 +1042,16 @@ h2{
 
 }
 
+.reading-detail{
+
+  color:var(--muted);
+
+  font-size:.72rem;
+
+  margin-top:10px;
+
+}
+
 
 /* ==========================================================
    CONTROL SECTION
@@ -1153,6 +1313,59 @@ html[data-theme="light"] .control-section{
   user-select:none;
 
 }
+
+.soil-inspection{
+  border:1px solid var(--line);
+  border-radius:16px;
+  margin-top:22px;
+  padding:18px;
+  background:var(--panel);
+}
+
+.inspect-button{
+  width:100%;
+  margin-top:12px;
+  padding:16px 18px;
+  border:0;
+  border-radius:12px;
+  background:var(--terracotta);
+  color:#fff;
+  font:inherit;
+  font-weight:800;
+  letter-spacing:.08em;
+  cursor:pointer;
+}
+
+.inspect-button:disabled{
+  opacity:.55;
+  cursor:wait;
+}
+
+.stop-inspection-button{
+  width:100%;
+  margin-top:10px;
+  padding:14px 18px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--panel-strong);
+  color:var(--ink);
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.stop-inspection-button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+.inspect-status{
+  min-height:1.4em;
+  margin:12px 0 0;
+  color:var(--muted);
+  font-size:.9rem;
+}
+
 
 
 .probe-button:active,
@@ -1688,6 +1901,10 @@ LIVE <em>READINGS</em>
 
 </h2>
 
+<p class="muted" id="sensorConnectionStatus" role="status" aria-live="polite">
+  Waiting for sensor readings…
+</p>
+
 </div>
 
 
@@ -1698,15 +1915,13 @@ LIVE <em>READINGS</em>
 
 <div class="reading-label">
 
-Soil Moisture
+Soil Moisture (DO)
 
 </div>
 
 <div class="reading-value">
 
---
-
-<span class="reading-unit">%</span>
+<span id="soilMoistureValue">--</span>
 
 </div>
 
@@ -1717,13 +1932,13 @@ Soil Moisture
 
 <div class="reading-label">
 
-Temperature
+Soil Temperature
 
 </div>
 
 <div class="reading-value">
 
---
+<span id="temperatureValue">--</span>
 
 <span class="reading-unit">°C</span>
 
@@ -1736,13 +1951,32 @@ Temperature
 
 <div class="reading-label">
 
-Humidity
+Air Temperature
 
 </div>
 
 <div class="reading-value">
 
---
+<span id="airTemperatureValue">--</span>
+
+<span class="reading-unit">°C</span>
+
+</div>
+
+</div>
+
+
+<div class="reading">
+
+<div class="reading-label">
+
+Relative Humidity
+
+</div>
+
+<div class="reading-value">
+
+<span id="relativeHumidityValue">--</span>
 
 <span class="reading-unit">%</span>
 
@@ -1761,8 +1995,15 @@ Soil pH
 
 <div class="reading-value">
 
---
+<span id="soilPHValue">--</span>
 
+</div>
+
+<div class="reading-detail" id="phCalibrationStatus">Not calibrated</div>
+<div class="reading-detail">
+  ADC <span id="phRawValue">--</span> / 4095
+  · OUT <span id="phOutputVoltageValue">--</span> V
+  · PIN <span id="phAdcVoltageValue">--</span> V
 </div>
 
 </div>
@@ -1966,6 +2207,16 @@ LOWER
 </button>
 
 
+</div>
+
+
+<!-- AUTOMATED SOIL INSPECTION -->
+<div class="soil-inspection">
+  <p class="eyebrow"><span></span> SOIL INSPECTION</p>
+  <p class="muted">Lower the probe, capture soil and air readings, then raise it automatically.</p>
+  <button class="inspect-button" id="inspectButton" type="button">INSPECT</button>
+  <button class="stop-inspection-button" id="stopInspectionButton" type="button" disabled>STOP INSPECTION</button>
+  <p class="inspect-status" id="inspectStatus" role="status" aria-live="polite">Ready to inspect.</p>
 </div>
 
 </div>
@@ -2667,8 +2918,163 @@ document.getElementById(
 
 
 /* ==========================================================
+   AUTOMATED SOIL INSPECTION
+   ========================================================== */
+const inspectButton = document.getElementById("inspectButton");
+const stopInspectionButton = document.getElementById("stopInspectionButton");
+const inspectStatus = document.getElementById("inspectStatus");
+let previousInspectState = "idle";
+
+if (inspectButton) {
+  inspectButton.addEventListener("click", function () {
+    inspectButton.disabled = true;
+    inspectStatus.textContent = "Starting inspection…";
+    fetch("/api/inspect?action=start", {cache:"no-store"})
+      .then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok || !data.ok) throw new Error(data.message || "Could not start inspection");
+          inspectStatus.textContent = data.message || "Inspection started.";
+        });
+      })
+      .catch(function (error) {
+        inspectStatus.textContent = error.message || "Inspection could not start.";
+        inspectButton.disabled = false;
+      });
+  });
+}
+
+if (stopInspectionButton) {
+  stopInspectionButton.addEventListener("click", async function () {
+    stopInspectionButton.disabled = true;
+    inspectStatus.textContent = "Stopping inspection and preparing JSON…";
+    try {
+      const response = await fetch("/api/inspect?action=stop", {cache:"no-store"});
+      const data = await response.json();
+      if (!response.ok || !data.ok || !data.inspection) {
+        throw new Error(data.message || "Could not export inspection");
+      }
+
+      const inspectionJson = JSON.stringify(data.inspection, null, 2);
+      try {
+        await navigator.clipboard.writeText(inspectionJson);
+        inspectStatus.textContent = "Inspection stopped. JSON copied — paste it into the Teryzon dashboard.";
+      } catch {
+        const jsonCopyField = document.createElement("textarea");
+        jsonCopyField.value = inspectionJson;
+        jsonCopyField.setAttribute("readonly", "");
+        jsonCopyField.style.position = "fixed";
+        jsonCopyField.style.opacity = "0";
+        document.body.appendChild(jsonCopyField);
+        jsonCopyField.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(jsonCopyField);
+        if (copied) {
+          inspectStatus.textContent = "Inspection stopped. JSON copied — paste it into the Teryzon dashboard.";
+        } else {
+          inspectStatus.textContent = "Inspection stopped, but clipboard access was blocked. Copy the JSON from the browser prompt.";
+          window.prompt("Copy this inspection JSON into the Teryzon dashboard:", inspectionJson);
+        }
+      }
+      if (data.readings) renderEnvironmentReadings(data.readings);
+    } catch (error) {
+      inspectStatus.textContent = error.message || "Inspection could not be exported.";
+      stopInspectionButton.disabled = false;
+    }
+  });
+}
+
+function updateInspectStatus() {
+  fetch("/api/inspect-status", {cache:"no-store"})
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (!inspectStatus || !inspectButton) return;
+      const labels = {
+        idle: "Ready to inspect.",
+        lowering: "Lowering probe into the soil…",
+        settling: "Probe is in the soil. Waiting for stable readings…",
+        reading: "Capturing soil and air sensor readings…",
+        raising: "Readings captured. Raising probe…",
+        complete: "Inspection complete. Latest readings are shown above.",
+        failed: "Inspection failed. Check the probe and sensor connections."
+      };
+      inspectStatus.textContent = labels[data.state] || "Inspection status: " + data.state;
+      inspectButton.disabled = ["lowering", "settling", "reading", "raising"].indexOf(data.state) !== -1;
+      stopInspectionButton.disabled = !["lowering", "settling", "reading", "raising", "complete"].includes(data.state);
+      if (data.state === "complete" && previousInspectState !== "complete") {
+        if (data.readings) renderEnvironmentReadings(data.readings);
+        else updateEnvironmentReadings();
+      }
+      previousInspectState = data.state;
+    })
+    .catch(function () {
+      if (inspectStatus) inspectStatus.textContent = "Inspection status unavailable.";
+    });
+}
+
+setInterval(updateInspectStatus, 700);
+updateInspectStatus();
+
+
+/* ==========================================================
    PROBE POSITION
    ========================================================== */
+
+function formatSensorValue(value, decimals) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toFixed(decimals)
+    : "--";
+}
+
+function renderEnvironmentReadings(data) {
+  const unavailable = data === null;
+  document.getElementById("soilMoistureValue").textContent =
+    !unavailable && (data.soilMoisture === "WET" || data.soilMoisture === "DRY")
+      ? data.soilMoisture
+      : "--";
+  document.getElementById("temperatureValue").textContent =
+    unavailable ? "--" : formatSensorValue(data.soilTemperature, 1);
+  document.getElementById("airTemperatureValue").textContent =
+    unavailable ? "--" : formatSensorValue(data.airTemperature, 1);
+  document.getElementById("relativeHumidityValue").textContent =
+    unavailable ? "--" : formatSensorValue(data.relativeHumidity, 0);
+  document.getElementById("soilPHValue").textContent =
+    unavailable ? "--" : formatSensorValue(data.soilPH, 2);
+  document.getElementById("phRawValue").textContent =
+    unavailable || typeof data.phRaw !== "number" ? "--" : String(data.phRaw);
+  document.getElementById("phOutputVoltageValue").textContent =
+    unavailable ? "--" : formatSensorValue(data.phVoltage, 2);
+  document.getElementById("phAdcVoltageValue").textContent =
+    unavailable ? "--" : formatSensorValue(data.phAdcVoltage, 2);
+  document.getElementById("phCalibrationStatus").textContent =
+    unavailable
+      ? "Sensor readings unavailable"
+      : !data.phAdcSafe
+        ? "ADC voltage too high — check the pH divider"
+        : data.phCalibrated
+          ? "Two-point calibrated (pH 4.00 / 7.00)"
+          : "Uncalibrated — use pH 4.00 and 7.00 buffers";
+  document.getElementById("sensorConnectionStatus").textContent =
+    unavailable ? "Sensor readings unavailable — check the rover connection."
+      : "Live sensor readings";
+}
+
+function updateEnvironmentReadings(){
+  fetch("/api/sensors", {cache:"no-store"})
+    .then(function(response){
+      if (!response.ok) throw new Error("Sensor API returned an error");
+      return response.json();
+    })
+    .then(function(data){
+      renderEnvironmentReadings(data);
+    })
+    .catch(function(){
+      renderEnvironmentReadings(null);
+    });
+}
+
+setInterval(updateEnvironmentReadings, 2000);
+updateEnvironmentReadings();
+
 
 function updateProbePosition(){
 
@@ -2801,6 +3207,44 @@ void showOLED(String line1, String line2 = "") {
 
   display.display();
 
+}
+
+String oledNumber(float value, int decimals) {
+  if (isnan(value)) return "--";
+  return String(value, decimals);
+}
+
+void showOLEDReadings() {
+  if (!oledAvailable) return;
+
+  display.clearDisplay();
+  display.setTextColor(SH110X_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("TERYZON ROVER");
+  display.drawLine(0, 12, 127, 12, SH110X_WHITE);
+
+  display.setCursor(0, 19);
+  display.print("Soil ");
+  display.print(soilMoistureRaw < 0 ? "N/A" : (soilMoistureWet ? "WET" : "DRY"));
+  display.print(" T:");
+  display.print(oledNumber(soilTemperatureC, 1));
+  display.println("C");
+
+  display.setCursor(0, 33);
+  display.print("Air:");
+  display.print(oledNumber(airTemperatureC, 1));
+  display.print("C RH:");
+  display.print(oledNumber(relativeHumidityPct, 0));
+  display.println("%");
+
+  display.setCursor(0, 47);
+  display.print("pH:");
+  display.print(oledNumber(soilPH, 2));
+  display.print(" ADC:");
+  if (phRaw < 0) display.println("--");
+  else display.println(phRaw);
+  display.display();
 }
 
 
@@ -3170,6 +3614,11 @@ void handleProbe() {
   String action =
     server.arg("action");
 
+  if (inspectionInProgress()) {
+    server.send(409, "application/json", "{\"ok\":false,\"message\":\"Automated inspection is running\"}");
+    return;
+  }
+
 
   if (action == "down") {
 
@@ -3230,6 +3679,123 @@ void handleProbePosition() {
 // WEB: STATUS
 // ============================================================
 
+// ============================================================
+// WEB: SENSOR READINGS
+// ============================================================
+
+String jsonNumber(float value, int decimals) {
+  if (isnan(value)) return "null";
+  return String(value, decimals);
+}
+
+String jsonInteger(int value) {
+  if (value < 0) return "null";
+  return String(value);
+}
+
+String buildSensorJson() {
+  String json = "{";
+  json += "\"soilMoisture\":";
+  json += soilMoistureRaw < 0 ? "null" : (soilMoistureWet ? "\"WET\"" : "\"DRY\"");
+  json += ",";
+  json += "\"soilMoistureDO\":" + jsonInteger(soilMoistureRaw) + ",";
+  json += "\"soilTemperature\":" + jsonNumber(soilTemperatureC, 1) + ",";
+  json += "\"airTemperature\":" + jsonNumber(airTemperatureC, 1) + ",";
+  json += "\"relativeHumidity\":" + jsonNumber(relativeHumidityPct, 1) + ",";
+  json += "\"soilPH\":" + jsonNumber(soilPH, 2) + ",";
+  json += "\"phRaw\":" + jsonInteger(phRaw) + ",";
+  json += "\"phVoltage\":" + jsonNumber(phOutputVoltage, 3) + ",";
+  json += "\"phAdcVoltage\":" + jsonNumber(phAdcVoltage, 3) + ",";
+  json += "\"phAdcSafe\":";
+  json += !isnan(phAdcVoltage) && phAdcVoltage <= PH_ADC_MAX_SAFE_VOLTAGE
+          ? "true"
+          : "false";
+  json += ",";
+  json += "\"phCalibrated\":";
+  json += phCalibrationValid() ? "true" : "false";
+  json += "}";
+  return json;
+}
+
+void handleSensors() {
+  String json = buildSensorJson();
+  server.send(200, "application/json", json);
+}
+
+
+void handleInspect() {
+  String action = server.arg("action");
+  if (action == "stop") {
+    if (inspectionReadingsJson == "null") {
+      readEnvironmentSensors();
+      lastSensorRead = millis();
+      inspectionReadingsJson = buildSensorJson();
+    }
+
+    probeMovingDown = false;
+    probeMovingUp = servoAvailable && servoPosition < SERVO_UP_ANGLE;
+    inspectionState = probeMovingUp ? INSPECT_RAISING : INSPECT_COMPLETE;
+    inspectionStateStarted = millis();
+
+    String json = "{\"ok\":true,\"readings\":" + inspectionReadingsJson +
+                  ",\"inspection\":{\"format\":\"teryzon-inspection-v1\",\"deviceUptimeMs\":" +
+                  String(millis()) + ",\"readings\":" + inspectionReadingsJson + "}}";
+    server.send(200, "application/json", json);
+    return;
+  }
+  if (action != "start") {
+    server.send(400, "application/json", "{\"ok\":false,\"message\":\"Use action=start or action=stop\"}");
+    return;
+  }
+  if (!servoAvailable) {
+    inspectionState = INSPECT_FAILED;
+    server.send(503, "application/json", "{\"ok\":false,\"message\":\"Probe servo is unavailable\"}");
+    return;
+  }
+  if (inspectionInProgress()) {
+    server.send(409, "application/json", "{\"ok\":false,\"message\":\"Inspection is already running\"}");
+    return;
+  }
+
+  // Start from a known raised position before the automatic cycle.
+  probeMovingUp = false;
+  probeMovingDown = false;
+  inspectionReadingsJson = "null";
+  inspectionState = INSPECT_LOWERING;
+  inspectionStateStarted = millis();
+  probeMovingDown = true;
+  server.send(200, "application/json", "{\"ok\":true,\"message\":\"Inspection started\"}");
+}
+
+void handleInspectStatus() {
+  String json = "{\"state\":\"" + String(inspectionStateName()) +
+                "\",\"position\":" + String(servoPosition) +
+                ",\"readings\":" + inspectionReadingsJson + "}";
+  server.send(200, "application/json", json);
+}
+
+void updateInspectionSequence() {
+  if (inspectionState == INSPECT_LOWERING && !probeMovingDown && servoPosition <= SERVO_DOWN_ANGLE) {
+    inspectionState = INSPECT_SETTLING;
+    inspectionStateStarted = millis();
+  }
+  else if (inspectionState == INSPECT_SETTLING && millis() - inspectionStateStarted >= INSPECTION_SETTLE_MS) {
+    inspectionState = INSPECT_READING;
+    readEnvironmentSensors();
+    lastSensorRead = millis();
+    inspectionReadingsJson = buildSensorJson();
+    inspectionState = INSPECT_RAISING;
+    inspectionStateStarted = millis();
+    probeMovingUp = true;
+    probeMovingDown = false;
+  }
+  else if (inspectionState == INSPECT_RAISING && !probeMovingUp && servoPosition >= SERVO_UP_ANGLE) {
+    inspectionState = INSPECT_COMPLETE;
+    inspectionStateStarted = millis();
+  }
+}
+
+
 void handleStatus() {
 
   String json =
@@ -3266,6 +3832,20 @@ void setup() {
 
   Serial.begin(115200);
 
+  analogReadResolution(12);
+  pinMode(SOIL_MOISTURE_PIN, INPUT);
+  soilTempSensor.begin();
+  soilTempSensor.setWaitForConversion(false);
+  airSensor.begin();
+  analogSetPinAttenuation(PH_SENSOR_PIN, ADC_11db);
+  readEnvironmentSensors();
+  lastSensorRead = millis();
+  lastSoilTempRequest = millis();
+  soilTempSensor.requestTemperatures();
+  soilTempConversionStarted = millis();
+  soilTempConversionPending = true;
+  Serial.println("[SOIL SENSORS] Initialized");
+
 
   // ----------------------------------------------------------
   // OLED
@@ -3277,12 +3857,12 @@ void setup() {
   );
 
 
-  if (
-    !display.begin(
+  oledAvailable = display.begin(
       OLED_ADDRESS,
       true
-    )
-  ) {
+  );
+
+  if (!oledAvailable) {
 
     Serial.println(
       "[OLED] Initialization failed"
@@ -3526,6 +4106,25 @@ void setup() {
   );
 
 
+  server.on(
+    "/api/sensors",
+    HTTP_GET,
+    handleSensors
+  );
+
+  server.on(
+    "/api/inspect",
+    HTTP_GET,
+    handleInspect
+  );
+
+  server.on(
+    "/api/inspect-status",
+    HTTP_GET,
+    handleInspectStatus
+  );
+
+
   // ----------------------------------------------------------
   // 404
   // ----------------------------------------------------------
@@ -3563,6 +4162,7 @@ void setup() {
     "SYSTEM READY",
     "192.168.4.1"
   );
+  lastOLEDUpdate = millis();
 
 }
 
@@ -3574,6 +4174,12 @@ void setup() {
 void loop() {
 
   server.handleClient();
+
+  if (millis() - lastSensorRead >= SENSOR_INTERVAL_MS) {
+    lastSensorRead = millis();
+    readEnvironmentSensors();
+  }
+  updateSoilTemperature();
 
 
   // ----------------------------------------------------------
@@ -3593,6 +4199,13 @@ void loop() {
 
   }
 
+  updateInspectionSequence();
+
+  if (oledAvailable &&
+      millis() - lastOLEDUpdate >= OLED_UPDATE_INTERVAL_MS) {
+    lastOLEDUpdate = millis();
+    showOLEDReadings();
+  }
 
   delay(1);
 
