@@ -13,6 +13,7 @@
     "voice-glow": "^0.2.1"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "supabase": "^2.122.0"
   }
 }
