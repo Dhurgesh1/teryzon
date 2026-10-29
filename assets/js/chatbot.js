@@ -1,5 +1,6 @@
 const CHAT_KEY = 'teryzon-chat-sessions-v1';
 const ACTIVE_CHAT_KEY = 'teryzon-active-chat-v1';
+const CHAT_WIDGET_OPEN_KEY = 'teryzon-chat-widget-open-v1';
 const API_URL = window.TERYZON_CHAT_API_URL || 'https://zeryppqymzbqesllxnvk.supabase.co/functions/v1/teryzon-chat';
 const MAX_INPUT = 4000;
 const MAX_HISTORY = 12;
@@ -63,6 +64,7 @@ const saveSessions = (sessions) => {
 };
 const getActiveChatId = () => localStorage.getItem(ACTIVE_CHAT_KEY) || null;
 const setActiveChatId = (id) => localStorage.setItem(ACTIVE_CHAT_KEY, id);
+const isChatWidgetOpen = () => localStorage.getItem(CHAT_WIDGET_OPEN_KEY) === 'true';
 
 const createSession = (title = 'New chat') => ({
   id: createId(),
@@ -675,12 +677,13 @@ const boot = async () => {
     input.focus();
   };
 
-  const togglePanel = (open) => {
+  const togglePanel = (open, focusInput = true) => {
     panel.classList.toggle('is-open', open);
     panel.setAttribute('aria-hidden', String(!open));
     launcher.setAttribute('aria-expanded', String(open));
+    localStorage.setItem(CHAT_WIDGET_OPEN_KEY, String(open));
     if (open) {
-      input.focus();
+      if (focusInput) input.focus();
       document.body.style.overflow = window.innerWidth <= 560 ? 'hidden' : '';
     } else {
       panel.classList.remove('is-fullscreen');
@@ -965,9 +968,22 @@ const boot = async () => {
         })
       });
 
-      if (!response.ok) throw new Error('request failed');
-      const data = await response.json();
-      if (!data.message) throw new Error('empty response');
+      const responseBody = await response.text();
+      let data;
+      try {
+        data = responseBody ? JSON.parse(responseBody) : {};
+      } catch {
+        throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
+      }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
+      }
+      if (!response.ok) {
+        throw new Error(typeof data.error === 'string' && data.error
+          ? data.error
+          : `Chat service request failed (HTTP ${response.status}).`);
+      }
+      if (typeof data.message !== 'string' || !data.message.trim()) throw new Error('The chat service returned an empty response.');
       if (requestId !== activeRequestId) return;
 
       window.clearInterval(thinkingTimer);
@@ -1201,6 +1217,7 @@ const boot = async () => {
   renderSessionList();
   renderCurrentSession();
   renderPendingUploads();
+  if (isChatWidgetOpen()) togglePanel(true, false);
 };
 
 if (document.readyState === 'loading') {
@@ -1208,4 +1225,3 @@ if (document.readyState === 'loading') {
 } else {
   boot();
 }
-

@@ -202,14 +202,18 @@ Deno.serve(async (request) => {
       })
     });
 
-    if (!providerResponse.ok) return responseJson({ error: 'AI provider unavailable' }, 502);
+    if (!providerResponse.ok) {
+      console.error('OpenRouter request failed.', { status: providerResponse.status });
+      return responseJson({ error: `AI provider unavailable (HTTP ${providerResponse.status}).` }, 502);
+    }
 
     const data = await providerResponse.json();
     const message = data.choices?.[0]?.message?.content;
     if (!message) return responseJson({ error: 'Empty AI response' }, 502);
 
     return responseJson({ message });
-  } catch {
+  } catch (error) {
+    console.error('Unable to reach OpenRouter.', error);
     return responseJson({ error: 'AI provider unavailable' }, 502);
   }
 });
