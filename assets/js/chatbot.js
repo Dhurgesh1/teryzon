@@ -3,7 +3,10 @@ const ACTIVE_CHAT_KEY = 'teryzon-active-chat-v1';
 const CHAT_WIDGET_OPEN_KEY = 'teryzon-chat-widget-open-v1';
 const API_URL = window.TERYZON_CHAT_API_URL || 'https://zeryppqymzbqesllxnvk.supabase.co/functions/v1/teryzon-chat';
 const MAX_INPUT = 4000;
-const MAX_HISTORY = 12;
+const configuredHistoryLimit = Number(window.TERYZON_CHAT_MAX_HISTORY);
+const MAX_HISTORY = Number.isInteger(configuredHistoryLimit) && configuredHistoryLimit > 0
+  ? Math.min(configuredHistoryLimit, 30)
+  : 12;
 const MAX_SESSIONS = 12;
 const MAX_DOCUMENT_CHARS = 20000;
 const MAX_DOCUMENT_PAGES = 100;
@@ -13,22 +16,30 @@ const MAX_IMAGE_DIMENSION = 1600;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const MAX_PDF_RENDER_PAGES = 3;
 const quickActions = ['What is Teryzon?', 'How does the rover work?', 'Environmental monitoring', 'Explain my data', 'Technology used'];
+let richContent = null;
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+const richContentReady = import('/assets/js/chatbot-rich-content/bundle.js')
+  .then((module) => {
+    richContent = module;
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/assets/js/chatbot-rich-content/bundle.css';
+    document.head.append(stylesheet);
+    return module;
+  })
+  .catch((error) => {
+    console.error('Unable to load rich chatbot rendering. Falling back to safe plain text.', error);
+    return null;
+  });
 const clampDocumentText = (value) => {
   const text = String(value || '').trim();
   if (!text) return '';
   return text.length > MAX_DOCUMENT_CHARS ? `${text.slice(0, MAX_DOCUMENT_CHARS)}\n\n[Document content truncated to protect message size.]` : text;
 };
-const renderMarkdown = (source) => {
-  let html = escapeHtml(source).replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>').replace(/^## (.+)$/gm, '<h4>$1</h4>').replace(/^# (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>').replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>');
-  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-  html = html.split(/\n{2,}/).map((part) => part.startsWith('<pre>') || part.startsWith('<ul>') || part.startsWith('<h4>') ? part : `<p>${part.replace(/\n/g, '<br>')}</p>`).join('');
-  return html.replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
-};
+const renderMarkdown = (source, options) => richContent
+  ? richContent.renderMarkdown(source, options)
+  : `<p>${escapeHtml(source).replace(/\n/g, '<br>')}</p>`;
 
 const icon = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true">${path}</svg>`;
 const timestamp = () => new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' }).format(new Date());
@@ -352,7 +363,7 @@ const renderTableView = (tableData) => {
 
 const renderAttachmentChip = (attachment) => {
   const preview = attachment.kind === 'image' && attachment.dataUrl
-    ? `<img src="${attachment.dataUrl}" alt="${escapeHtml(attachment.name)}">`
+    ? `<img src="${escapeHtml(attachment.dataUrl)}" alt="${escapeHtml(attachment.name)}">`
     : `<span class="teryzon-chatbot-file-badge">${attachment.kind === 'image' ? 'IMG' : (attachment.kind === 'pdf' ? 'PDF' : 'FILE')}</span>`;
 
   return `
@@ -368,14 +379,15 @@ const renderAttachmentChip = (attachment) => {
 
 const renderMessage = (message, messageIndex = -1) => {
   const isUser = message.role === 'user';
+  const messageAttribute = message.id ? `data-message-id="${escapeHtml(message.id)}"` : '';
   const attachments = (message.attachments || []).map(renderAttachmentChip).join('');
   const tableData = (message.attachments || []).map((attachment) => attachment.tableData).find(Boolean) || null;
   const content = `
-    ${renderMarkdown(message.content || '')}
+    <div data-message-body>${renderMarkdown(message.content || '', { streaming: Boolean(message.streaming) })}</div>
     ${tableData ? renderTableView(tableData) : ''}
     ${attachments ? `<div class="teryzon-chatbot-attachment-row">${attachments}</div>` : ''}
     <small class="teryzon-chatbot-time">${message.time || timestamp()}</small>
-    ${message.error ? `<button class="teryzon-chatbot-quick" data-chat-retry="${Math.max(0, messageIndex - 1)}" type="button">Retry</button>` : ''}
+    ${message.error ? `<button class="teryzon-chatbot-quick" data-chat-retry="${Number.isInteger(message.retryMessageIndex) ? message.retryMessageIndex : Math.max(0, messageIndex - 1)}" type="button">Retry</button>` : ''}
   `;
   const actions = isUser ? `
     <div class="teryzon-chatbot-message-actions">
@@ -384,7 +396,7 @@ const renderMessage = (message, messageIndex = -1) => {
     </div>
   ` : '';
   return `
-    <article class="teryzon-chatbot-message ${isUser ? 'is-user' : ''}">
+    <article class="teryzon-chatbot-message ${isUser ? 'is-user' : ''}" ${messageAttribute}>
       ${isUser ? `<div class="teryzon-chatbot-bubble">${content}</div>` : content}
       ${actions}
     </article>
@@ -393,6 +405,7 @@ const renderMessage = (message, messageIndex = -1) => {
 
 const boot = async () => {
   if (document.querySelector('.teryzon-chatbot-launcher')) return;
+  await richContentReady;
 
   const currentUrl = `${window.location.pathname || ''}${window.location.search || ''}${window.location.hash || ''}`.toLowerCase();
   const legalRoutes = [
@@ -479,6 +492,7 @@ const boot = async () => {
   const fileInput = panel.querySelector('.teryzon-chatbot-file-input');
   const uploadTrigger = panel.querySelector('.teryzon-chatbot-upload-trigger');
   const sidebarToggle = panel.querySelector('[data-chat-action="toggle-sidebar"]');
+  richContent?.installRichContentHandlers(messages);
 
   const getStoredSessions = () => {
     const sessions = loadSessions();
@@ -497,7 +511,7 @@ const boot = async () => {
   let activeRequestId = 0;
   let activeRequestController = null;
   let activeReplyMessage = null;
-  let activeReplyPrevious = null;
+  let activeReplySession = null;
   let thinkingTimer = null;
   let thinkingOrbRoot = null;
   const thinkingStages = [
@@ -555,6 +569,11 @@ const boot = async () => {
     if (!activeSession) return;
     const messagesToRender = activeSession.messages.length ? activeSession.messages : [{ role: 'assistant', content: "Hi! I'm Teryzon AI.\n\nI can help you learn about Teryzon, our rover, environmental monitoring, ecological restoration, and how the platform works.\n\nHow can I help you today?", time: timestamp() }];
     messages.innerHTML = messagesToRender.map(renderMessage).join('');
+    if (richContent) {
+      richContent.enhanceRenderedContent(messages).catch((error) => {
+        console.error('Unable to enhance rendered chat content.', error);
+      });
+    }
     messages.scrollTop = messages.scrollHeight;
     quickWrap.innerHTML = activeSession.messages.length ? '' : quickActions.map((action) => `<button class="teryzon-chatbot-quick" type="button">${escapeHtml(action)}</button>`).join('');
   };
@@ -577,49 +596,125 @@ const boot = async () => {
       : icon('<path d="M12 19V5M5 12l7-7 7 7"/>');
   };
 
-  const revealReply = async (content, session, requestId, messageAction = null) => {
-    let reply;
-    let replyArticle = null;
+  const beginReply = (session, messageAction = null) => {
+    const reply = { id: createId(), role: 'assistant', content: '', streaming: true, time: timestamp() };
     if (messageAction) {
       const userIndex = session.messages.indexOf(messageAction.userMessage);
-      const replyIndex = userIndex + 1;
-      const messageArticles = Array.from(messages.querySelectorAll('.teryzon-chatbot-message:not([data-typing])'));
-      if (messageAction.replyMessage && session.messages[replyIndex] === messageAction.replyMessage) {
-        reply = messageAction.replyMessage;
-        activeReplyPrevious = { content: reply.content, time: reply.time };
-        Object.assign(reply, { content: '', time: timestamp() });
-        replyArticle = messageArticles[replyIndex] || null;
-        if (replyArticle) replyArticle.innerHTML = '';
-        session.messages.splice(replyIndex + 1);
-        messageArticles.slice(replyIndex + 1).forEach((article) => article.remove());
-      } else {
-        session.messages.splice(replyIndex);
-        messageArticles.slice(replyIndex).forEach((article) => article.remove());
-        reply = { role: 'assistant', content: '', time: timestamp() };
-        session.messages.push(reply);
-      }
+      session.messages.splice(userIndex + 1);
+      session.messages.splice(userIndex + 1, 0, reply);
     } else {
-      reply = { role: 'assistant', content: '', time: timestamp() };
       session.messages.push(reply);
     }
     activeReplyMessage = reply;
-    setThinkingStage(thinkingStages.length - 1);
+    activeReplySession = session;
+    renderCurrentSession();
+    return reply;
+  };
 
-    const words = String(content).match(/\S+\s*/g) || [String(content)];
-    for (const word of words) {
-      if (requestId !== activeRequestId) return;
-      reply.content += word;
-      if (!replyArticle) {
-        messages.insertAdjacentHTML('beforeend', renderMessage(reply));
-        replyArticle = messages.lastElementChild;
-      } else {
-        replyArticle.innerHTML = `${renderMarkdown(reply.content)}<small class="teryzon-chatbot-time">${escapeHtml(reply.time)}</small>`;
-      }
-      messages.scrollTop = messages.scrollHeight;
-      await new Promise((resolve) => window.setTimeout(resolve, 38));
+  const stopThinkingIndicator = () => {
+    window.clearInterval(thinkingTimer);
+    thinkingTimer = null;
+    thinkingOrbRoot?.unmount();
+    thinkingOrbRoot = null;
+    messages.querySelector('[data-typing]')?.remove();
+  };
+
+  const updateReplyContent = (reply, streaming = true) => {
+    reply.streaming = streaming;
+    const article = Array.from(messages.querySelectorAll('[data-message-id]'))
+      .find((element) => element.dataset.messageId === reply.id);
+    const body = article?.querySelector('[data-message-body]');
+    if (!body) return;
+    body.innerHTML = renderMarkdown(reply.content, { streaming });
+    if (!streaming && richContent) {
+      richContent.enhanceRenderedContent(body).catch((error) => {
+        console.error('Unable to enhance the completed chat response.', error);
+      });
     }
-    activeReplyMessage = null;
-    activeReplyPrevious = null;
+    const time = article.querySelector('.teryzon-chatbot-time');
+    if (time) time.textContent = reply.time;
+    messages.scrollTop = messages.scrollHeight;
+  };
+
+  const readChatStream = async (response, onText) => {
+    if (!response.body) throw new Error('The chat service returned an empty stream.');
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let lineBuffer = '';
+    let eventData = [];
+    let doneReceived = false;
+    let textReceived = false;
+
+    const processEvent = () => {
+      const data = eventData.join('\n');
+      eventData = [];
+      if (!data) return;
+      if (data === '[DONE]') {
+        doneReceived = true;
+        return;
+      }
+
+      let event;
+      try {
+        event = JSON.parse(data);
+      } catch {
+        throw new Error('The chat service returned malformed streaming data.');
+      }
+      if (event?.error) {
+        throw new Error('The AI service could not complete this response. Please try again.');
+      }
+      if (!Array.isArray(event?.choices)) {
+        if (event?.usage) return;
+        throw new Error('The chat service returned an invalid streaming response.');
+      }
+      for (const choice of event.choices) {
+        const content = choice?.delta?.content;
+        const fragments = typeof content === 'string'
+          ? [content]
+          : Array.isArray(content)
+            ? content.map((part) => part?.text).filter((part) => typeof part === 'string')
+            : [];
+        if (content !== undefined && typeof content !== 'string' && !Array.isArray(content)) {
+          throw new Error('The chat service returned an unsupported content format.');
+        }
+        fragments.forEach((fragment) => {
+          if (!fragment) return;
+          textReceived = true;
+          onText(fragment);
+        });
+      }
+    };
+
+    const processLine = (line) => {
+      if (!line) {
+        processEvent();
+      } else if (line.startsWith('data:')) {
+        eventData.push(line.slice(5).replace(/^ /, ''));
+      }
+    };
+
+    try {
+      while (!doneReceived) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop() || '';
+        lines.forEach((line) => processLine(line.replace(/\r$/, '')));
+      }
+      if (!doneReceived) {
+        lineBuffer += decoder.decode();
+        if (lineBuffer) processLine(lineBuffer.replace(/\r$/, ''));
+        processEvent();
+      } else {
+        await reader.cancel();
+      }
+    } catch (error) {
+      await reader.cancel(error).catch(() => {});
+      throw error;
+    }
+    if (!doneReceived) throw new Error('The chat response ended before it was complete.');
+    if (!textReceived) throw new Error('The chat service returned an empty response.');
   };
 
   const setPending = (value) => {
@@ -638,22 +733,10 @@ const boot = async () => {
       }, 1400);
       messages.scrollTop = messages.scrollHeight;
     } else {
-      if (activeReplyMessage && !activeReplyMessage.content) {
-        if (activeReplyPrevious) Object.assign(activeReplyMessage, activeReplyPrevious);
-        else {
-          const activeSession = getActiveSession();
-          const replyIndex = activeSession?.messages.indexOf(activeReplyMessage) ?? -1;
-          if (replyIndex >= 0) activeSession.messages.splice(replyIndex, 1);
-        }
-      }
       activeReplyMessage = null;
-      activeReplyPrevious = null;
-      window.clearInterval(thinkingTimer);
-      thinkingTimer = null;
-      thinkingOrbRoot?.unmount();
-      thinkingOrbRoot = null;
+      activeReplySession = null;
+      stopThinkingIndicator();
       setSendControl(false);
-      messages.querySelector('[data-typing]')?.remove();
     }
   };
 
@@ -663,10 +746,13 @@ const boot = async () => {
     activeRequestController?.abort();
     activeRequestController = null;
     if (activeReplyMessage && !activeReplyMessage.content) {
-      const activeSession = getActiveSession();
-      const replyIndex = activeSession?.messages.indexOf(activeReplyMessage) ?? -1;
-      if (replyIndex >= 0) activeSession.messages.splice(replyIndex, 1);
+      const replyIndex = activeReplySession?.messages.indexOf(activeReplyMessage) ?? -1;
+      if (replyIndex >= 0) activeReplySession.messages.splice(replyIndex, 1);
+    } else if (activeReplyMessage) {
+      activeReplyMessage.streaming = false;
     }
+    activeReplyMessage = null;
+    activeReplySession = null;
     setPending(false);
     resetPendingUploads();
     input.value = '';
@@ -906,8 +992,7 @@ const boot = async () => {
       requestAction = {
         type: messageAction.type,
         messageIndex: messageAction.messageIndex,
-        userMessage: actionMessage,
-        replyMessage: null
+        userMessage: actionMessage
       };
     } else {
       activeSession.messages.push(userMessage);
@@ -919,14 +1004,35 @@ const boot = async () => {
     renderSessionList();
     renderCurrentSession();
     const requestId = ++activeRequestId;
+    const requestStartedAt = Date.now();
+    const requestStartedClock = performance.now();
+    let upstreamResponseAt = null;
+    let firstTokenAt = null;
+    let responseCompletedAt = null;
+    let metricsLogged = false;
+    const logRequestMetrics = (outcome) => {
+      if (metricsLogged) return;
+      metricsLogged = true;
+      console.info('Teryzon chatbot performance.', {
+        requestStartedAt: new Date(requestStartedAt).toISOString(),
+        upstreamResponseAt: upstreamResponseAt === null ? null : new Date(upstreamResponseAt).toISOString(),
+        firstTokenAt: firstTokenAt === null ? null : new Date(firstTokenAt).toISOString(),
+        responseCompletedAt: responseCompletedAt === null ? null : new Date(responseCompletedAt).toISOString(),
+        totalDurationMs: Math.round(performance.now() - requestStartedClock),
+        timeToFirstTokenMs: firstTokenAt === null || upstreamResponseAt === null ? null : firstTokenAt - upstreamResponseAt,
+        outcome
+      });
+    };
+    const reply = beginReply(activeSession, requestAction);
     const controller = new AbortController();
     activeRequestController = controller;
     setPending(true);
 
     try {
+      const conversationMessages = activeSession.messages.filter((message) => message !== reply);
       const requestHistory = requestAction
-        ? activeSession.messages.slice(0, requestAction.messageIndex + 1)
-        : activeSession.messages;
+        ? conversationMessages.slice(0, requestAction.messageIndex + 1)
+        : conversationMessages;
       const payloadMessages = requestHistory.slice(-MAX_HISTORY).map((message) => buildMultimodalMessageContent({
         role: message.role,
         content: message.content,
@@ -941,6 +1047,7 @@ const boot = async () => {
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          stream: true,
           messages: payloadMessages.map((message) => ({
             role: message.role,
             content: message.content
@@ -967,53 +1074,102 @@ const boot = async () => {
         })
       });
 
-      const responseBody = await response.text();
-      let data;
-      try {
-        data = responseBody ? JSON.parse(responseBody) : {};
-      } catch {
-        throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
-      }
-      if (!data || typeof data !== 'object' || Array.isArray(data)) {
-        throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
-      }
+      upstreamResponseAt = Date.now();
       if (!response.ok) {
+        const responseBody = await response.text();
+        let data;
+        try {
+          data = responseBody ? JSON.parse(responseBody) : {};
+        } catch {
+          throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
+        }
         throw new Error(typeof data.error === 'string' && data.error
           ? data.error
           : `Chat service request failed (HTTP ${response.status}).`);
       }
-      if (typeof data.message !== 'string' || !data.message.trim()) throw new Error('The chat service returned an empty response.');
-      if (requestId !== activeRequestId) return;
 
-      window.clearInterval(thinkingTimer);
-      thinkingTimer = null;
-      await revealReply(String(data.message), activeSession, requestId, requestAction);
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('text/event-stream')) {
+        let scheduledRender = 0;
+        await readChatStream(response, (fragment) => {
+          if (requestId !== activeRequestId) return;
+          if (firstTokenAt === null) {
+            firstTokenAt = Date.now();
+            stopThinkingIndicator();
+          }
+          reply.content += fragment;
+          if (!scheduledRender) {
+            scheduledRender = window.requestAnimationFrame(() => {
+              scheduledRender = 0;
+              if (requestId === activeRequestId) updateReplyContent(reply, true);
+            });
+          }
+        });
+        if (scheduledRender) window.cancelAnimationFrame(scheduledRender);
+      } else {
+        const responseBody = await response.text();
+        let data;
+        try {
+          data = responseBody ? JSON.parse(responseBody) : {};
+        } catch {
+          throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          throw new Error(`Chat service returned an invalid response (HTTP ${response.status}).`);
+        }
+        if (typeof data.message !== 'string' || !data.message.trim()) {
+          throw new Error('The chat service returned an empty response.');
+        }
+        reply.content = String(data.message);
+        firstTokenAt = Date.now();
+      }
+
       if (requestId !== activeRequestId) return;
+      responseCompletedAt = Date.now();
+      reply.time = timestamp();
+      updateReplyContent(reply, false);
+      activeReplyMessage = null;
+      activeReplySession = null;
       activeSession.updatedAt = Date.now();
-      if (hasDocumentContext && !data.message.toLowerCase().includes('document')) {
+      logRequestMetrics('success');
+      renderCurrentSession();
+      if (hasDocumentContext && !reply.content.toLowerCase().includes('document')) {
         console.info('Document context sent successfully to Teryzon AI.');
       }
-      if (hasImageAttachments && !data.message.toLowerCase().includes('image')) {
+      if (hasImageAttachments && !reply.content.toLowerCase().includes('image')) {
         console.info('Image context sent successfully to Teryzon AI.');
       }
     } catch (error) {
+      responseCompletedAt = Date.now();
+      logRequestMetrics(error instanceof Error && error.name === 'AbortError' ? 'aborted' : 'error');
       if (requestId !== activeRequestId || (error instanceof Error && error.name === 'AbortError')) return;
       const userMessageText = (error instanceof Error && error.message) || 'Could not process the uploaded document.';
+      const failedUserIndex = activeSession.messages.indexOf(requestAction?.userMessage || userMessage);
+      if (activeReplyMessage === reply) {
+        const replyIndex = activeSession.messages.indexOf(reply);
+        if (!reply.content && replyIndex >= 0) activeSession.messages.splice(replyIndex, 1);
+        else if (reply.content) {
+          reply.streaming = false;
+          reply.time = timestamp();
+        }
+        activeReplyMessage = null;
+        activeReplySession = null;
+      }
       const errorReply = {
         role: 'assistant',
         content: navigator.onLine ? `Sorry, I ran into a problem while processing your request. ${userMessageText}` : "You're currently offline. Please check your internet connection and try again.",
         error: true,
+        retryMessageIndex: Math.max(0, failedUserIndex),
         time: timestamp()
       };
       if (requestAction) {
-        const replyIndex = requestAction.messageIndex + 1;
-        if (requestAction.replyMessage && activeSession.messages[replyIndex] === requestAction.replyMessage) {
-          Object.assign(requestAction.replyMessage, errorReply);
-          activeSession.messages.splice(replyIndex + 1);
-        } else {
-          activeSession.messages.splice(replyIndex);
-          activeSession.messages.push(errorReply);
-        }
+        const userIndex = activeSession.messages.indexOf(requestAction.userMessage);
+        const errorIndex = userIndex + 1 + (reply.content ? 1 : 0);
+        activeSession.messages.splice(errorIndex);
+        activeSession.messages.splice(errorIndex, 0, errorReply);
       } else {
         activeSession.messages.push(errorReply);
       }

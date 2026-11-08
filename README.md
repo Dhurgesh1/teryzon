@@ -363,11 +363,46 @@ Configure these Supabase Function secrets as needed:
 | `OPENROUTER_VISION_MODEL` | Optional free vision model; defaults to `google/gemma-4-26b-a4b-it:free` |
 | `OPENROUTER_VISION_FALLBACK_MODELS` | Optional comma-separated free vision model IDs; defaults to `google/gemma-4-31b-it:free` |
 | `OPENROUTER_PROVIDER_ORDER` | Optional comma-separated OpenRouter provider slugs to prefer; OpenRouter provider fallbacks remain enabled |
+| `OPENROUTER_PROVIDER_SORT` | Optional `throughput`, `latency`, or `price` provider sort; unset preserves OpenRouter automatic routing |
+| `OPENROUTER_ALLOW_PAID_MODELS` | Optional; set to `true` only to allow paid models or `:nitro` routes |
+| `CHAT_MAX_HISTORY` | Optional server-side conversation limit; defaults to 12 messages, capped at 30 |
+| `CHAT_MAX_OUTPUT_TOKENS` | Optional output-token limit; defaults to 700, capped at 2048 |
 | `ALLOWED_ORIGIN` | Optional browser origin; defaults to `https://www.teryzon.com` |
 
-Use only model IDs that currently exist in OpenRouter and end in `:free` (except
-the `openrouter/free` router). Vision fallbacks must support image input. Free
-model availability and rate limits are controlled by OpenRouter and may change.
+Set `OPENROUTER_API_KEY` in Supabase Edge Function secrets to the raw key from
+OpenRouter (without quotes or a `Bearer ` prefix). The function logs only
+whether the secret is present. If OpenRouter returns HTTP 401, verify or rotate
+the secret in Supabase; model selection does not correct an invalid key.
+
+Use only model IDs that currently exist in OpenRouter. By default, model routes
+must end in `:free` (or use `openrouter/free`); vision routes must support image
+input. OpenRouter's `:nitro` variant prioritizes provider throughput and can
+select paid priority endpoints. To use it, explicitly set
+`OPENROUTER_ALLOW_PAID_MODELS=true` and configure the variant in
+`OPENROUTER_MODEL` (or the matching vision/fallback setting). This is an
+opt-in that may incur charges. `OPENROUTER_PROVIDER_SORT=throughput` is the
+lower-risk speed-oriented alternative; by default, OpenRouter's automatic
+routing remains enabled. Model availability and free-tier rate limits can change.
+
+The browser chatbot streams OpenAI-compatible SSE events from OpenRouter through
+the Edge Function and updates one assistant message as fragments arrive. The
+Edge Function records request, upstream-response, first-token, and completion
+timings without logging message content. Set the public browser history limit
+before loading the chatbot with `window.TERYZON_CHAT_MAX_HISTORY` if it should
+differ from 12; keep it at or below `CHAT_MAX_HISTORY`.
+
+Markdown rendering uses bundled Markdown-it, DOMPurify, KaTeX, and Highlight.js.
+Chart.js and KaTeX assets are bundled and charts load on demand. Mermaid is
+loaded only when a Mermaid code fence is rendered, from a version-pinned jsDelivr
+script protected by Subresource Integrity; if that script is unavailable, the
+diagram source remains visible with a fallback message.
+
+After changing chatbot rendering or its dependencies, rebuild the browser
+assets before publishing the static site:
+
+```powershell
+npm run build:chatbot-rich-content
+```
 
 The distributed chat rate limit uses the Supabase-provided `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY` runtime secrets. Apply the rate-limit migration

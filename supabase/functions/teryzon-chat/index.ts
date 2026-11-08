@@ -5,7 +5,14 @@ const DEFAULT_VISION_MODEL = 'google/gemma-4-26b-a4b-it:free';
 const DEFAULT_FALLBACK_MODELS = ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free'];
 const DEFAULT_VISION_FALLBACK_MODELS = ['google/gemma-4-31b-it:free'];
 const MAX_MESSAGE_LENGTH = 4000;
-const MAX_HISTORY = 12;
+const configuredHistoryLimit = Number(Deno.env.get('CHAT_MAX_HISTORY'));
+const MAX_HISTORY = Number.isInteger(configuredHistoryLimit) && configuredHistoryLimit > 0
+  ? Math.min(configuredHistoryLimit, 30)
+  : 12;
+const configuredOutputTokens = Number(Deno.env.get('CHAT_MAX_OUTPUT_TOKENS'));
+const MAX_OUTPUT_TOKENS = Number.isInteger(configuredOutputTokens) && configuredOutputTokens >= 64
+  ? Math.min(configuredOutputTokens, 2048)
+  : 700;
 const WINDOW_MS = 60 * 1000;
 const MAX_IMAGE_COUNT = 4;
 const MAX_RETRIES = 2;
@@ -13,8 +20,12 @@ const OPENROUTER_TIMEOUT_MS = 25_000;
 const MAX_RETRY_DELAY_MS = 5_000;
 const requestWindows = new Map<string, number[]>();
 let warnedAboutMemoryRateLimit = false;
+const configuredOpenRouterKey = Deno.env.get('OPENROUTER_API_KEY')?.trim() || '';
+const openRouterApiKey = configuredOpenRouterKey.replace(/^Bearer\s+/i, '');
 
-const systemPrompt = `You are Teryzon AI, the official assistant for Teryzon. Be clear, helpful, scientific, professional, friendly, and honest about uncertainty. Explain technical information in understandable language and keep answers concise unless the user asks for detail.
+console.info('OpenRouter API key configured.', { configured: openRouterApiKey.length > 0 });
+
+const systemPrompt = `You are Teryzon AI, the official AI assistant for the TERYZON — Autonomous Ecological Survey & Restoration Rover project. Be clear, helpful, scientific, professional, friendly, and honest about uncertainty. Explain technical information in understandable language and keep answers concise unless the user asks for detail. Teryzon's project development team is distinct from the third-party AI model and provider technology used to generate responses; never imply that an AI provider created or owns Teryzon AI. Never invent legal ownership or project claims.
 
 ## Trusted public knowledge
 Teryzon is an environmental technology project whose full name is "TERYZON — Autonomous Ecological Survey & Restoration Rover." It connects robotics, environmental sensing, data analysis, and AI to help people understand soil and ecological conditions and explore restoration approaches. Its core cycle is Explore → Measure → Understand → Restore → Repeat. Its tagline is "Explore. Measure. Understand. Restore."
@@ -36,7 +47,7 @@ When uploaded document text is included, use it as the primary evidence for ques
 
 When images are supplied, analyze their actual visible content, including text, objects, diagrams, screenshots, logos, or charts. If an image is unclear, say what cannot be determined. A PNG/JPG/WebP is an image, not a PDF. If a PDF appears scanned or image-based with no selectable text, explain that OCR or image-based processing is needed; do not pretend text was extracted when it was not.
 
-Never claim to have performed actions you did not perform.`;
+Never claim to have performed actions you did not perform. Use Markdown naturally: use headings for long answers, bold important terms, bullets for lists, numbered steps for procedures, tables for structured comparisons, and valid Markdown links. Do not add empty lists, unnecessary headings, escape characters around ordinary Markdown, or wrap ordinary answers in code blocks. Keep short replies simple. Include units in scientific answers, distinguish measurements from estimates, and explain uncertainty. Create charts only from sufficient numerical data actually supplied or confirmed; never invent chart data.`;
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || 'https://www.teryzon.com';
 const corsHeaders = {
@@ -56,7 +67,8 @@ const parseCsv = (value: string | undefined, defaults: string[] = []) => {
   return [...new Set(entries)];
 };
 
-const isFreeModel = (model: string) => model === 'openrouter/free' || model.endsWith(':free');
+const isAllowedModel = (model: string, allowPaidModels: boolean) =>
+  allowPaidModels || model === 'openrouter/free' || model.endsWith(':free');
 
 const sanitizeLogMessage = (value: unknown) => String(value || 'No provider message')
   .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -127,7 +139,7 @@ const fetchOpenRouterWithRetry = async (
 
       const retryAfterMs = parseRetryAfter(response.headers.get('Retry-After'));
       const details = await parseUpstreamError(response);
-      console.error('OpenRouter request failed.', {
+      console.error(response.status === 401 ? 'OpenRouter authentication failed.' : 'OpenRouter request failed.', {
         status: response.status,
         ...details,
         selectedModel,
@@ -256,6 +268,7 @@ const consumeDistributedRateLimit = async (identity: string) => {
 };
 
 Deno.serve(async (request) => {
+  const requestStartedAt = Date.now();
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.headers.get('origin') !== allowedOrigin) return responseJson({ error: 'Origin not allowed' }, 403);
   if (request.method !== 'POST') return responseJson({ error: 'Method not allowed' }, 405);
@@ -277,8 +290,7 @@ Deno.serve(async (request) => {
     return responseJson({ error: 'Chat service is temporarily unavailable. Please try again shortly.' }, 503);
   }
 
-  const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
-  if (!openRouterKey) return responseJson({ error: 'Teryzon AI is temporarily unavailable. Please try again later.' }, 503);
+  if (!openRouterApiKey) return responseJson({ error: 'Teryzon AI is temporarily unavailable. Please try again later.' }, 503);
 
   let payload: {
     messages?: Array<{ role?: string; content?: unknown }>;
@@ -293,6 +305,7 @@ Deno.serve(async (request) => {
     }>;
     imageAttachments?: Array<{ name?: string; type?: string; dataUrl?: string; size?: number }>;
     failedAttachments?: Array<{ name?: string; type?: string; error?: string }>;
+    stream?: boolean;
   };
 
   try {
@@ -429,19 +442,27 @@ Deno.serve(async (request) => {
       part && typeof part === 'object' && 'type' in part && part.type === 'image_url'
     )
   );
-  const primaryModel = hasImageInput
+  const primaryModel = (hasImageInput
     ? Deno.env.get('OPENROUTER_VISION_MODEL') || DEFAULT_VISION_MODEL
-    : Deno.env.get('OPENROUTER_MODEL') || DEFAULT_MODEL;
+    : Deno.env.get('OPENROUTER_MODEL') || DEFAULT_MODEL).trim();
   const fallbackModels = parseCsv(
     Deno.env.get(hasImageInput ? 'OPENROUTER_VISION_FALLBACK_MODELS' : 'OPENROUTER_FALLBACK_MODELS'),
     hasImageInput ? DEFAULT_VISION_FALLBACK_MODELS : DEFAULT_FALLBACK_MODELS
   ).filter((model) => model !== primaryModel).slice(0, 3);
   const providerOrder = parseCsv(Deno.env.get('OPENROUTER_PROVIDER_ORDER'));
-  if (!isFreeModel(primaryModel) || fallbackModels.some((model) => !isFreeModel(model))) {
-    console.error('OpenRouter model configuration must use free model IDs.', {
+  const allowPaidModels = Deno.env.get('OPENROUTER_ALLOW_PAID_MODELS') === 'true';
+  if (!isAllowedModel(primaryModel, allowPaidModels) || fallbackModels.some((model) => !isAllowedModel(model, allowPaidModels))) {
+    console.error('OpenRouter model configuration is not permitted by the current billing setting.', {
       selectedModel: primaryModel,
-      hasImageInput
+      hasImageInput,
+      allowPaidModels
     });
+    return responseJson({ error: 'Teryzon AI is temporarily unavailable. Please try again later.' }, 503);
+  }
+  const providerSort = Deno.env.get('OPENROUTER_PROVIDER_SORT') || '';
+  const allowedProviderSorts = new Set(['throughput', 'latency', 'price']);
+  if (providerSort && !allowedProviderSorts.has(providerSort)) {
+    console.error('OpenRouter provider sort configuration is invalid.', { providerSort });
     return responseJson({ error: 'Teryzon AI is temporarily unavailable. Please try again later.' }, 503);
   }
 
@@ -450,7 +471,8 @@ Deno.serve(async (request) => {
     ...(fallbackModels.length ? { models: fallbackModels } : {}),
     provider: {
       allow_fallbacks: true,
-      ...(providerOrder.length ? { order: providerOrder } : {})
+      ...(providerOrder.length ? { order: providerOrder } : {}),
+      ...(allowedProviderSorts.has(providerSort) ? { sort: providerSort } : {})
     },
     messages: [{ role: 'system', content: systemPrompt }, ...enrichedMessages].map((message) => ({
       ...message,
@@ -459,14 +481,15 @@ Deno.serve(async (request) => {
         : String(message.content || '').slice(0, MAX_MESSAGE_LENGTH)
     })),
     temperature: 0.35,
-    max_tokens: 700
+    max_tokens: MAX_OUTPUT_TOKENS,
+    ...(payload.stream === true ? { stream: true } : {})
   };
   const openRouterStartedAt = Date.now();
   try {
     const providerResponse = await fetchOpenRouterWithRetry((signal) => fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${openRouterKey}`,
+        Authorization: `Bearer ${openRouterApiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://www.teryzon.com',
         'X-Title': 'Teryzon AI'
@@ -474,12 +497,19 @@ Deno.serve(async (request) => {
       body: JSON.stringify(requestBody),
       signal
     }), primaryModel, request.signal);
+    const upstreamResponseAt = Date.now();
 
     if (!providerResponse.ok) {
       const retryAfterMs = parseRetryAfter(providerResponse.headers.get('Retry-After'));
       const retryAfterHeader = retryAfterMs === null
         ? {}
         : { 'Retry-After': String(Math.max(1, Math.ceil(retryAfterMs / 1000))) };
+      if (providerResponse.status === 401) {
+        return responseJson(
+          { error: 'Teryzon AI is temporarily unavailable. Please try again later.' },
+          503
+        );
+      }
       const status = providerResponse.status === 400 || providerResponse.status === 404 ? 502 : 503;
       const error = providerResponse.status === 429
         ? 'Teryzon AI is busy right now. Please wait a little and try again.'
@@ -487,6 +517,126 @@ Deno.serve(async (request) => {
           ? 'AI could not process this request. Please try again.'
           : 'AI service is temporarily unavailable. Please try again shortly.';
       return responseJson({ error }, status, retryAfterHeader);
+    }
+
+    if (payload.stream === true) {
+      if (!providerResponse.body) {
+        console.error('OpenRouter returned no stream body.', {
+          status: providerResponse.status,
+          selectedModel: primaryModel,
+          durationMs: Date.now() - openRouterStartedAt
+        });
+        return responseJson({ error: 'AI returned an invalid response. Please try again.' }, 502);
+      }
+
+      const reader = providerResponse.body.getReader();
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      let eventBuffer = '';
+      let firstTokenAt: number | null = null;
+      let streamDone = false;
+      let metricsLogged = false;
+      const emitFrame = (frame: string, controller: ReadableStreamDefaultController<Uint8Array>) => {
+        const data = frame.split('\n')
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.slice(5).replace(/^ /, ''))
+          .join('\n');
+        let outputFrame = frame;
+        if (data === '[DONE]') streamDone = true;
+        if (data && data !== '[DONE]') {
+          try {
+            const event = JSON.parse(data);
+            if (event && typeof event === 'object' && (event.error || event.type === 'error')) {
+              outputFrame = 'data: {"error":{"message":"The AI service could not complete this response."}}';
+            } else if (firstTokenAt === null) {
+              const choices = event && typeof event === 'object' && Array.isArray(event.choices)
+                ? event.choices
+                : [];
+              const hasText = choices.some((choice: unknown) => {
+                if (!choice || typeof choice !== 'object' || !('delta' in choice)) return false;
+                const content = (choice as { delta?: { content?: unknown } }).delta?.content;
+                return (typeof content === 'string' && content.length > 0)
+                  || (Array.isArray(content) && content.some((part) =>
+                    part && typeof part === 'object' && 'text' in part && typeof part.text === 'string' && part.text.length > 0
+                  ));
+              });
+              if (hasText) firstTokenAt = Date.now();
+            }
+          } catch {
+            outputFrame = 'data: {"error":{"message":"The AI service returned malformed streaming data."}}';
+          }
+        }
+        controller.enqueue(encoder.encode(`${outputFrame}\n\n`));
+      };
+      const emitAvailableFrames = (controller: ReadableStreamDefaultController<Uint8Array>) => {
+        eventBuffer = eventBuffer.replace(/\r\n/g, '\n');
+        const frames = eventBuffer.split('\n\n');
+        eventBuffer = frames.pop() || '';
+        for (const frame of frames) {
+          emitFrame(frame, controller);
+        }
+      };
+      const logStreamMetrics = (cancelled: boolean, failed = false) => {
+        if (metricsLogged) return;
+        metricsLogged = true;
+        const finishedAt = Date.now();
+        const completed = !failed && (!cancelled || streamDone);
+        console.info('Teryzon chat stream metrics.', {
+          requestStartedAt: new Date(requestStartedAt).toISOString(),
+          upstreamResponseAt: new Date(upstreamResponseAt).toISOString(),
+          firstTokenAt: firstTokenAt === null ? null : new Date(firstTokenAt).toISOString(),
+          responseCompletedAt: completed ? new Date(finishedAt).toISOString() : null,
+          totalDurationMs: finishedAt - requestStartedAt,
+          timeToFirstTokenMs: firstTokenAt === null ? null : firstTokenAt - upstreamResponseAt,
+          selectedModel: primaryModel,
+          cancelled: cancelled && !streamDone,
+          failed
+        });
+      };
+      const stream = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          try {
+            const { value, done } = await reader.read();
+            if (done) {
+              eventBuffer += decoder.decode();
+              emitAvailableFrames(controller);
+              if (eventBuffer.trim()) emitFrame(eventBuffer, controller);
+              eventBuffer = '';
+              logStreamMetrics(false);
+              controller.close();
+              return;
+            }
+            eventBuffer += decoder.decode(value, { stream: true });
+            emitAvailableFrames(controller);
+            if (eventBuffer.length > 64 * 1024) {
+              logStreamMetrics(false, true);
+              await reader.cancel();
+              controller.error(new Error('OpenRouter stream event exceeded the supported size.'));
+              return;
+            }
+          } catch (error) {
+            logStreamMetrics(false, true);
+            controller.error(error);
+          }
+        },
+        async cancel(reason) {
+          try {
+            await reader.cancel(reason);
+          } finally {
+            logStreamMetrics(true);
+          }
+        }
+      });
+
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Cache-Control': 'no-cache, no-transform',
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'X-Accel-Buffering': 'no'
+        }
+      });
     }
 
     let data: unknown;

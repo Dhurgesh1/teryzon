@@ -2,11 +2,19 @@
   "name": "teryzon-static-site",
   "private": true,
   "scripts": {
-    "build:chatbot": "esbuild assets/js/chatbot-input.jsx --bundle --format=esm --minify --outfile=assets/js/chatbot-input.bundle.js"
+    "build:chatbot": "esbuild assets/js/chatbot-input.jsx --bundle --format=esm --minify --outfile=assets/js/chatbot-input.bundle.js",
+    "build:chatbot-rich-content": "esbuild assets/js/chatbot-rich-content.js --bundle --splitting --format=esm --minify --outdir=assets/js/chatbot-rich-content --entry-names=bundle --chunk-names=chunk-[name]-[hash] --loader:.woff=file --loader:.woff2=file --loader:.ttf=file --asset-names=fonts/[name]-[hash]"
   },
   "dependencies": {
     "border-beam": "^1.4.1",
+    "chart.js": "^4.6.1",
+    "dompurify": "^3.4.17",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.19.1",
     "liquid-gooey": "^0.2.2",
+    "markdown-it": "^15.0.3",
+    "markdown-it-task-lists": "^2.1.1",
+    "markdown-it-texmath": "^1.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "thinking-orbs": "^0.3.2",
