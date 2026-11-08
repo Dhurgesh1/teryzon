@@ -1096,11 +1096,16 @@ const boot = async () => {
         let scheduledRender = 0;
         await readChatStream(response, (fragment) => {
           if (requestId !== activeRequestId) return;
+          const firstFragment = firstTokenAt === null;
           if (firstTokenAt === null) {
             firstTokenAt = Date.now();
             stopThinkingIndicator();
           }
           reply.content += fragment;
+          if (firstFragment) {
+            updateReplyContent(reply, true);
+            return;
+          }
           if (!scheduledRender) {
             scheduledRender = window.requestAnimationFrame(() => {
               scheduledRender = 0;

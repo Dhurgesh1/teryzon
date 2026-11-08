@@ -119,7 +119,7 @@ const markdown = new MarkdownIt({
   .use(taskLists, { enabled: false })
   .use(texmath, {
     engine: katex,
-    delimiters: 'dollars',
+    delimiters: ['dollars', 'brackets'],
     katexOptions: {
       throwOnError: false,
       strict: 'ignore',
@@ -128,6 +128,48 @@ const markdown = new MarkdownIt({
       maxSize: 20
     }
   });
+
+markdown.core.ruler.after('inline', 'teryzon-remove-empty-list-items', (state) => {
+  const tokens = state.tokens;
+  for (let index = tokens.length - 1; index >= 0; index -= 1) {
+    if (tokens[index].type !== 'list_item_open') continue;
+    let depth = 1;
+    let hasText = false;
+    let hasNestedItem = false;
+    let end = index + 1;
+    for (; end < tokens.length && depth > 0; end += 1) {
+      const token = tokens[end];
+      if (token.type === 'list_item_open') {
+        depth += 1;
+        hasNestedItem = true;
+      } else if (token.type === 'list_item_close') {
+        depth -= 1;
+      } else if (token.type === 'inline' && token.content.trim()) {
+        hasText = true;
+      }
+    }
+    if (!hasText && !hasNestedItem && depth === 0) {
+      tokens.splice(index, end - index);
+    }
+  }
+  for (let index = tokens.length - 1; index >= 0; index -= 1) {
+    const closeType = tokens[index].type === 'bullet_list_open'
+      ? 'bullet_list_close'
+      : tokens[index].type === 'ordered_list_open'
+        ? 'ordered_list_close'
+        : '';
+    if (!closeType) continue;
+    let depth = 1;
+    let hasItem = false;
+    let end = index + 1;
+    for (; end < tokens.length && depth > 0; end += 1) {
+      if (tokens[end].type === tokens[index].type) depth += 1;
+      else if (tokens[end].type === closeType) depth -= 1;
+      else if (tokens[end].type === 'list_item_open') hasItem = true;
+    }
+    if (!hasItem && depth === 0) tokens.splice(index, end - index);
+  }
+});
 
 markdown.validateLink = (url) => isAllowedUrl(url);
 markdown.renderer.rules.link_open = (tokens, index, options, environment, renderer) => {
@@ -179,14 +221,54 @@ markdown.renderer.rules.fence = (tokens, index, options, environment, renderer) 
   if (defaultFence) {
     const rendered = defaultFence(tokens, index, options, environment, renderer);
     const label = language ? escapeHtml(language) : 'code';
-    const codeId = `teryzon-code-${crypto.randomUUID()}`;
+    const codeId = createId('teryzon-code');
     return `<div class="teryzon-chatbot-code-block"><div class="teryzon-chatbot-code-toolbar"><span>${label}</span><button type="button" data-chat-copy-code="${escapeHtml(codeId)}">Copy</button></div><div id="${escapeHtml(codeId)}">${rendered}</div></div>`;
   }
   return `<pre><code>${escapeHtml(code)}</code></pre>`;
 };
 
+const prepareStreamingSource = (source) => {
+  const lines = String(source || '').split('\n');
+  let openFence = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const fence = lines[index].match(/^ {0,3}(`{3,}|~{3,})/);
+    if (!fence) continue;
+    const marker = fence[1][0];
+    if (!openFence) {
+      openFence = { index, marker, length: fence[1].length };
+    } else if (marker === openFence.marker && fence[1].length >= openFence.length) {
+      openFence = null;
+    }
+  }
+  if (openFence) lines.splice(openFence.index);
+
+  const tableDelimiter = /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+  let tableHeaderIndex = -1;
+  let tableDelimiterIndex = -1;
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    if (lines[index].includes('|') && tableDelimiter.test(lines[index + 1])) {
+      tableHeaderIndex = index;
+      tableDelimiterIndex = index + 1;
+    }
+  }
+
+  const original = String(source || '');
+  const lastLine = lines.at(-1) || '';
+  if (tableHeaderIndex >= 0 && !original.endsWith('\n')
+    && lines.length - 1 > tableDelimiterIndex && lastLine.includes('|')) {
+    lines.pop();
+  } else if (tableHeaderIndex < 0 && lines.length > 1
+    && lastLine.includes('|') && lines.at(-2).includes('|')) {
+    let tableStart = lines.length - 1;
+    while (tableStart > 0 && lines[tableStart - 1].includes('|')) tableStart -= 1;
+    if (tableStart < lines.length - 1) lines.splice(tableStart);
+  }
+  return lines.join('\n');
+};
+
 export const renderMarkdown = (source, { streaming = false } = {}) => {
-  const rendered = markdown.render(String(source || ''), { streaming });
+  const markdownSource = streaming ? prepareStreamingSource(source) : String(source || '');
+  const rendered = markdown.render(markdownSource, { streaming });
   return DOMPurify.sanitize(rendered, {
     ADD_ATTR: ['target', 'rel', 'loading', 'decoding', 'referrerpolicy', 'data-chatbot-mermaid', 'data-chatbot-chart', 'data-chatbot-chart-data', 'data-chat-copy-code'],
     ADD_TAGS: ['canvas'],

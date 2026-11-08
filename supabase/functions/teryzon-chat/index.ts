@@ -5,14 +5,22 @@ const DEFAULT_VISION_MODEL = 'google/gemma-4-26b-a4b-it:free';
 const DEFAULT_FALLBACK_MODELS = ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free'];
 const DEFAULT_VISION_FALLBACK_MODELS = ['google/gemma-4-31b-it:free'];
 const MAX_MESSAGE_LENGTH = 4000;
-const configuredHistoryLimit = Number(Deno.env.get('CHAT_MAX_HISTORY'));
-const MAX_HISTORY = Number.isInteger(configuredHistoryLimit) && configuredHistoryLimit > 0
-  ? Math.min(configuredHistoryLimit, 30)
-  : 12;
-const configuredOutputTokens = Number(Deno.env.get('CHAT_MAX_OUTPUT_TOKENS'));
-const MAX_OUTPUT_TOKENS = Number.isInteger(configuredOutputTokens) && configuredOutputTokens >= 64
-  ? Math.min(configuredOutputTokens, 2048)
-  : 700;
+const parseBoundedInteger = (name: string, fallback: number, minimum: number, maximum: number) => {
+  const raw = Deno.env.get(name);
+  if (!raw?.trim()) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < minimum) {
+    console.warn(`Invalid ${name}; using the default value.`);
+    return fallback;
+  }
+  if (value > maximum) {
+    console.warn(`${name} exceeds its maximum; using the capped value.`);
+    return maximum;
+  }
+  return value;
+};
+const MAX_HISTORY = parseBoundedInteger('CHAT_MAX_HISTORY', 12, 1, 30);
+const MAX_OUTPUT_TOKENS = parseBoundedInteger('CHAT_MAX_OUTPUT_TOKENS', 700, 64, 2048);
 const WINDOW_MS = 60 * 1000;
 const MAX_IMAGE_COUNT = 4;
 const MAX_RETRIES = 2;
@@ -47,7 +55,7 @@ When uploaded document text is included, use it as the primary evidence for ques
 
 When images are supplied, analyze their actual visible content, including text, objects, diagrams, screenshots, logos, or charts. If an image is unclear, say what cannot be determined. A PNG/JPG/WebP is an image, not a PDF. If a PDF appears scanned or image-based with no selectable text, explain that OCR or image-based processing is needed; do not pretend text was extracted when it was not.
 
-Never claim to have performed actions you did not perform. Use Markdown naturally: use headings for long answers, bold important terms, bullets for lists, numbered steps for procedures, tables for structured comparisons, and valid Markdown links. Do not add empty lists, unnecessary headings, escape characters around ordinary Markdown, or wrap ordinary answers in code blocks. Keep short replies simple. Include units in scientific answers, distinguish measurements from estimates, and explain uncertainty. Create charts only from sufficient numerical data actually supplied or confirmed; never invent chart data.`;
+Never claim to have performed actions you did not perform. Use Markdown naturally: use headings for long answers, bold important terms, bullets for lists, numbered steps for procedures, tables for structured comparisons, and valid Markdown links. Do not add empty lists, unnecessary headings, escape characters around ordinary Markdown, or wrap ordinary answers in code blocks. Keep short replies simple. Include units in scientific answers, distinguish measurements from estimates, and explain uncertainty. When a chart is justified, render it in a fenced chart JSON block with a type, labels, and numerical datasets; use only sufficient data actually supplied or confirmed and never invent chart data.`;
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') || 'https://www.teryzon.com';
 const corsHeaders = {
@@ -535,6 +543,7 @@ Deno.serve(async (request) => {
       let eventBuffer = '';
       let firstTokenAt: number | null = null;
       let streamDone = false;
+      let streamFailed = false;
       let metricsLogged = false;
       const emitFrame = (frame: string, controller: ReadableStreamDefaultController<Uint8Array>) => {
         const data = frame.split('\n')
@@ -547,6 +556,7 @@ Deno.serve(async (request) => {
           try {
             const event = JSON.parse(data);
             if (event && typeof event === 'object' && (event.error || event.type === 'error')) {
+              streamFailed = true;
               outputFrame = 'data: {"error":{"message":"The AI service could not complete this response."}}';
             } else if (firstTokenAt === null) {
               const choices = event && typeof event === 'object' && Array.isArray(event.choices)
@@ -563,6 +573,7 @@ Deno.serve(async (request) => {
               if (hasText) firstTokenAt = Date.now();
             }
           } catch {
+            streamFailed = true;
             outputFrame = 'data: {"error":{"message":"The AI service returned malformed streaming data."}}';
           }
         }
@@ -580,7 +591,8 @@ Deno.serve(async (request) => {
         if (metricsLogged) return;
         metricsLogged = true;
         const finishedAt = Date.now();
-        const completed = !failed && (!cancelled || streamDone);
+        const hasFailed = failed || streamFailed;
+        const completed = !hasFailed && (!cancelled || streamDone);
         console.info('Teryzon chat stream metrics.', {
           requestStartedAt: new Date(requestStartedAt).toISOString(),
           upstreamResponseAt: new Date(upstreamResponseAt).toISOString(),
@@ -590,7 +602,7 @@ Deno.serve(async (request) => {
           timeToFirstTokenMs: firstTokenAt === null ? null : firstTokenAt - upstreamResponseAt,
           selectedModel: primaryModel,
           cancelled: cancelled && !streamDone,
-          failed
+          failed: hasFailed
         });
       };
       const stream = new ReadableStream<Uint8Array>({
