@@ -1,11 +1,18 @@
 export {};
 
-const DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const DEFAULT_MODEL = 'openrouter/free';
+const DEFAULT_VISION_MODEL = 'google/gemma-4-26b-a4b-it:free';
+const DEFAULT_FALLBACK_MODELS = ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free'];
+const DEFAULT_VISION_FALLBACK_MODELS = ['google/gemma-4-31b-it:free'];
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_HISTORY = 12;
 const WINDOW_MS = 60 * 1000;
 const MAX_IMAGE_COUNT = 4;
+const MAX_RETRIES = 2;
+const OPENROUTER_TIMEOUT_MS = 25_000;
+const MAX_RETRY_DELAY_MS = 5_000;
 const requestWindows = new Map<string, number[]>();
+let warnedAboutMemoryRateLimit = false;
 
 const systemPrompt = `You are Teryzon AI, the official assistant for Teryzon. Be clear, helpful, scientific, professional, friendly, and honest about uncertainty. Explain technical information in understandable language and keep answers concise unless the user asks for detail.
 
@@ -39,10 +46,214 @@ const corsHeaders = {
   'Vary': 'Origin'
 };
 
-const responseJson = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+const responseJson = (body: unknown, status = 200, extraHeaders: Record<string, string> = {}) => new Response(JSON.stringify(body), {
   status,
-  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  headers: { ...corsHeaders, ...extraHeaders, 'Content-Type': 'application/json' }
 });
+
+const parseCsv = (value: string | undefined, defaults: string[] = []) => {
+  const entries = value?.split(',').map((entry) => entry.trim()).filter(Boolean) || defaults;
+  return [...new Set(entries)];
+};
+
+const isFreeModel = (model: string) => model === 'openrouter/free' || model.endsWith(':free');
+
+const sanitizeLogMessage = (value: unknown) => String(value || 'No provider message')
+  .replace(/[\u0000-\u001f\u007f]/g, ' ')
+  .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
+  .replace(/sk-or-v1-[A-Za-z0-9_-]+/gi, '[redacted]')
+  .replace(/\bsk-[A-Za-z0-9_-]{12,}/gi, '[redacted]')
+  .replace(/\b(api[_-]?key|token|password)\s*[:=]\s*["']?[^ "';,]+/gi, '$1=[redacted]')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .slice(0, 300);
+
+const parseRetryAfter = (value: string | null) => {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
+  const retryAt = Date.parse(value);
+  return Number.isNaN(retryAt) ? null : Math.max(0, retryAt - Date.now());
+};
+
+const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+const parseUpstreamError = async (response: Response) => {
+  const bodyText = await response.clone().text();
+  let body: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(bodyText);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      body = parsed as Record<string, unknown>;
+    }
+  } catch {
+    body = null;
+  }
+
+  const providerError = body?.error && typeof body.error === 'object'
+    ? body.error as Record<string, unknown>
+    : null;
+  const metadata = providerError?.metadata && typeof providerError.metadata === 'object'
+    ? providerError.metadata as Record<string, unknown>
+    : null;
+  const provider = [metadata?.provider_name, metadata?.upstream_provider_name, body?.provider_name]
+    .find((value) => typeof value === 'string');
+  const model = [metadata?.model_slug, metadata?.model]
+    .find((value) => typeof value === 'string');
+  const limitSource = typeof metadata?.limit_source === 'string' ? metadata.limit_source : null;
+
+  return {
+    code: sanitizeLogMessage(providerError?.code ?? response.status),
+    message: sanitizeLogMessage(providerError?.message || body?.message || bodyText || 'No provider message'),
+    ...(provider ? { provider: sanitizeLogMessage(provider) } : {}),
+    ...(model ? { providerModel: sanitizeLogMessage(model) } : {}),
+    ...(limitSource ? { limitSource: sanitizeLogMessage(limitSource) } : {})
+  };
+};
+
+const fetchOpenRouterWithRetry = async (
+  sendRequest: (signal: AbortSignal) => Promise<Response>,
+  selectedModel: string,
+  callerSignal: AbortSignal
+) => {
+  for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt += 1) {
+    const attemptStartedAt = Date.now();
+    try {
+      const response = await sendRequest(AbortSignal.any([
+        callerSignal,
+        AbortSignal.timeout(OPENROUTER_TIMEOUT_MS)
+      ]));
+      if (response.ok) return response;
+
+      const retryAfterMs = parseRetryAfter(response.headers.get('Retry-After'));
+      const details = await parseUpstreamError(response);
+      console.error('OpenRouter request failed.', {
+        status: response.status,
+        ...details,
+        selectedModel,
+        attempt,
+        durationMs: Date.now() - attemptStartedAt
+      });
+
+      const retryableStatus = response.status === 408
+        || response.status === 429
+        || [500, 502, 503, 504].includes(response.status);
+      if (!retryableStatus || attempt > MAX_RETRIES || callerSignal.aborted) return response;
+
+      const delayMs = retryAfterMs ?? Math.round((500 * (2 ** (attempt - 1))) * (0.5 + Math.random()));
+      if (delayMs > MAX_RETRY_DELAY_MS) return response;
+      await wait(delayMs);
+      if (callerSignal.aborted) throw new DOMException('Request cancelled.', 'AbortError');
+    } catch (error) {
+      if (callerSignal.aborted) throw error;
+
+      const timedOut = error instanceof Error && error.name === 'TimeoutError';
+      console.error(timedOut ? 'OpenRouter request timed out.' : 'Unable to reach OpenRouter.', {
+        selectedModel,
+        attempt,
+        error: sanitizeLogMessage(error instanceof Error ? error.message : 'Network request failed'),
+        durationMs: Date.now() - attemptStartedAt
+      });
+
+      if (attempt > MAX_RETRIES) throw error;
+      await wait(Math.round((500 * (2 ** (attempt - 1))) * (0.5 + Math.random())));
+      if (callerSignal.aborted) throw new DOMException('Request cancelled.', 'AbortError');
+    }
+  }
+
+  throw new Error('OpenRouter request attempts exhausted.');
+};
+
+const hashRateLimitIdentity = async (identity: string, secret: string) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(identity));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
+};
+
+const consumeMemoryRateLimit = (identity: string) => {
+  const now = Date.now();
+  const recent = (requestWindows.get(identity) || []).filter((time) => now - time < WINDOW_MS);
+  if (recent.length >= 20) {
+    return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((recent[0] + WINDOW_MS - now) / 1000)) };
+  }
+  recent.push(now);
+  requestWindows.set(identity, recent);
+  return { allowed: true, retryAfterSeconds: 0 };
+};
+
+const consumeDistributedRateLimit = async (identity: string) => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceRoleKey) {
+    // Keep local development usable; production requests should use the shared database RPC.
+    if (!warnedAboutMemoryRateLimit) {
+      console.warn('Supabase rate-limit credentials are unavailable; using the temporary instance-local rate limiter.');
+      warnedAboutMemoryRateLimit = true;
+    }
+    return consumeMemoryRateLimit(identity);
+  }
+
+  const identifierHash = await hashRateLimitIdentity(identity, serviceRoleKey);
+  const startedAt = Date.now();
+  let rpcResponse: Response;
+  try {
+    rpcResponse = await fetch(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/rpc/consume_teryzon_chat_rate_limit`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_identifier_hash: identifierHash, p_limit: 20, p_window_seconds: 60 }),
+      signal: AbortSignal.timeout(2_000)
+    });
+  } catch (error) {
+    console.error('Distributed chat rate limiter request failed.', {
+      error: sanitizeLogMessage(error instanceof Error ? error.message : 'Network request failed'),
+      durationMs: Date.now() - startedAt
+    });
+    throw new Error('Chat service is temporarily unavailable.');
+  }
+
+  if (!rpcResponse.ok) {
+    console.error('Distributed chat rate limiter returned an error.', {
+      status: rpcResponse.status,
+      durationMs: Date.now() - startedAt
+    });
+    throw new Error('Chat service is temporarily unavailable.');
+  }
+
+  let result: unknown;
+  try {
+    result = await rpcResponse.json();
+  } catch {
+    console.error('Distributed chat rate limiter returned invalid JSON.', {
+      status: rpcResponse.status,
+      durationMs: Date.now() - startedAt
+    });
+    throw new Error('Chat service is temporarily unavailable.');
+  }
+
+  const row = Array.isArray(result) ? result[0] : result;
+  if (!row || typeof row !== 'object' || !('allowed' in row) || typeof row.allowed !== 'boolean') {
+    console.error('Distributed chat rate limiter returned an invalid result.', {
+      durationMs: Date.now() - startedAt
+    });
+    throw new Error('Chat service is temporarily unavailable.');
+  }
+
+  const retryAfterSeconds = Number('retry_after_seconds' in row ? row.retry_after_seconds : 0);
+  return {
+    allowed: row.allowed,
+    retryAfterSeconds: Number.isFinite(retryAfterSeconds) ? Math.max(0, retryAfterSeconds) : 0
+  };
+};
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -50,14 +261,24 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return responseJson({ error: 'Method not allowed' }, 405);
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  const now = Date.now();
-  const recent = (requestWindows.get(ip) || []).filter((time) => now - time < WINDOW_MS);
-  if (recent.length >= 20) return responseJson({ error: 'Too many requests' }, 429);
-  recent.push(now);
-  requestWindows.set(ip, recent);
+  try {
+    const rateLimit = await consumeDistributedRateLimit(ip);
+    if (!rateLimit.allowed) {
+      return responseJson(
+        { error: 'Too many requests. Please wait a minute and try again.' },
+        429,
+        { 'Retry-After': String(Math.max(1, rateLimit.retryAfterSeconds)) }
+      );
+    }
+  } catch (error) {
+    console.error('Unable to enforce the distributed chat rate limit.', {
+      error: sanitizeLogMessage(error instanceof Error ? error.message : 'Unexpected rate limiter failure')
+    });
+    return responseJson({ error: 'Chat service is temporarily unavailable. Please try again shortly.' }, 503);
+  }
 
   const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
-  if (!openRouterKey) return responseJson({ error: 'Chat service is not configured' }, 503);
+  if (!openRouterKey) return responseJson({ error: 'Teryzon AI is temporarily unavailable. Please try again later.' }, 503);
 
   let payload: {
     messages?: Array<{ role?: string; content?: unknown }>;
@@ -156,12 +377,32 @@ Deno.serve(async (request) => {
     ].join('\n\n');
 
     if (lastUserIndex >= 0) {
-      const promptText = enrichedMessages[lastUserIndex].content || '';
-      const multimodalContent = [{ type: 'text', text: promptText ? `${promptText}\n\n${documentBlock}` : documentBlock }];
+      const currentContent = enrichedMessages[lastUserIndex].content;
+      const currentParts = Array.isArray(currentContent) ? currentContent : [];
+      const promptText = typeof currentContent === 'string'
+        ? currentContent
+        : currentParts
+          .filter((part) => part && typeof part === 'object' && 'type' in part && part.type === 'text')
+          .map((part) => String((part as { text?: string }).text || ''))
+          .join('\n');
+      const multimodalContent: Array<
+        { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
+      > = [{ type: 'text', text: promptText ? `${promptText}\n\n${documentBlock}` : documentBlock }];
+      const existingImages = currentParts
+        .filter((part) => part && typeof part === 'object' && 'type' in part && part.type === 'image_url')
+        .map((part) => (part as { image_url?: { url?: string } }).image_url?.url)
+        .filter((url): url is string => typeof url === 'string');
+      const existingImageUrls = new Set(existingImages);
+      existingImages.forEach((url) => multimodalContent.push({
+        type: 'image_url',
+        image_url: { url }
+      }));
       imageAttachments.forEach((attachment) => {
+        const url = attachment.dataUrl;
+        if (typeof url !== 'string' || existingImageUrls.has(url)) return;
         multimodalContent.push({
           type: 'image_url',
-          image_url: { url: attachment.dataUrl }
+          image_url: { url }
         });
       });
       enrichedMessages[lastUserIndex] = {
@@ -169,8 +410,11 @@ Deno.serve(async (request) => {
         content: multimodalContent
       };
     } else {
-      const multimodalContent = [{ type: 'text', text: documentBlock }];
+      const multimodalContent: Array<
+        { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
+      > = [{ type: 'text', text: documentBlock }];
       imageAttachments.forEach((attachment) => {
+        if (typeof attachment.dataUrl !== 'string') return;
         multimodalContent.push({
           type: 'image_url',
           image_url: { url: attachment.dataUrl }
@@ -180,8 +424,46 @@ Deno.serve(async (request) => {
     }
   }
 
+  const hasImageInput = imageAttachments.length > 0 || enrichedMessages.some((message) =>
+    Array.isArray(message.content) && message.content.some((part) =>
+      part && typeof part === 'object' && 'type' in part && part.type === 'image_url'
+    )
+  );
+  const primaryModel = hasImageInput
+    ? Deno.env.get('OPENROUTER_VISION_MODEL') || DEFAULT_VISION_MODEL
+    : Deno.env.get('OPENROUTER_MODEL') || DEFAULT_MODEL;
+  const fallbackModels = parseCsv(
+    Deno.env.get(hasImageInput ? 'OPENROUTER_VISION_FALLBACK_MODELS' : 'OPENROUTER_FALLBACK_MODELS'),
+    hasImageInput ? DEFAULT_VISION_FALLBACK_MODELS : DEFAULT_FALLBACK_MODELS
+  ).filter((model) => model !== primaryModel).slice(0, 3);
+  const providerOrder = parseCsv(Deno.env.get('OPENROUTER_PROVIDER_ORDER'));
+  if (!isFreeModel(primaryModel) || fallbackModels.some((model) => !isFreeModel(model))) {
+    console.error('OpenRouter model configuration must use free model IDs.', {
+      selectedModel: primaryModel,
+      hasImageInput
+    });
+    return responseJson({ error: 'Teryzon AI is temporarily unavailable. Please try again later.' }, 503);
+  }
+
+  const requestBody = {
+    model: primaryModel,
+    ...(fallbackModels.length ? { models: fallbackModels } : {}),
+    provider: {
+      allow_fallbacks: true,
+      ...(providerOrder.length ? { order: providerOrder } : {})
+    },
+    messages: [{ role: 'system', content: systemPrompt }, ...enrichedMessages].map((message) => ({
+      ...message,
+      content: Array.isArray(message.content)
+        ? message.content
+        : String(message.content || '').slice(0, MAX_MESSAGE_LENGTH)
+    })),
+    temperature: 0.35,
+    max_tokens: 700
+  };
+  const openRouterStartedAt = Date.now();
   try {
-    const providerResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const providerResponse = await fetchOpenRouterWithRetry((signal) => fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${openRouterKey}`,
@@ -189,31 +471,75 @@ Deno.serve(async (request) => {
         'HTTP-Referer': 'https://www.teryzon.com',
         'X-Title': 'Teryzon AI'
       },
-      body: JSON.stringify({
-        model: Deno.env.get('OPENROUTER_MODEL') || DEFAULT_MODEL,
-        messages: [{ role: 'system', content: systemPrompt }, ...enrichedMessages].map((message) => ({
-          ...message,
-          content: Array.isArray(message.content)
-            ? message.content
-            : String(message.content || '').slice(0, MAX_MESSAGE_LENGTH)
-        })),
-        temperature: 0.35,
-        max_tokens: 700
-      })
-    });
+      body: JSON.stringify(requestBody),
+      signal
+    }), primaryModel, request.signal);
 
     if (!providerResponse.ok) {
-      console.error('OpenRouter request failed.', { status: providerResponse.status });
-      return responseJson({ error: `AI provider unavailable (HTTP ${providerResponse.status}).` }, 502);
+      const retryAfterMs = parseRetryAfter(providerResponse.headers.get('Retry-After'));
+      const retryAfterHeader = retryAfterMs === null
+        ? {}
+        : { 'Retry-After': String(Math.max(1, Math.ceil(retryAfterMs / 1000))) };
+      const status = providerResponse.status === 400 || providerResponse.status === 404 ? 502 : 503;
+      const error = providerResponse.status === 429
+        ? 'Teryzon AI is busy right now. Please wait a little and try again.'
+        : status === 502
+          ? 'AI could not process this request. Please try again.'
+          : 'AI service is temporarily unavailable. Please try again shortly.';
+      return responseJson({ error }, status, retryAfterHeader);
     }
 
-    const data = await providerResponse.json();
-    const message = data.choices?.[0]?.message?.content;
-    if (!message) return responseJson({ error: 'Empty AI response' }, 502);
+    let data: unknown;
+    try {
+      data = await providerResponse.json();
+    } catch {
+      console.error('OpenRouter returned invalid JSON.', {
+        status: providerResponse.status,
+        selectedModel: primaryModel,
+        attempt: 1,
+        durationMs: Date.now() - openRouterStartedAt
+      });
+      return responseJson({ error: 'AI returned an invalid response. Please try again.' }, 502);
+    }
+
+    const responseData = data && typeof data === 'object' && !Array.isArray(data)
+      ? data as Record<string, unknown>
+      : null;
+    const choices = responseData?.choices;
+    const firstChoice = Array.isArray(choices) && choices.length > 0
+      && choices[0] && typeof choices[0] === 'object'
+      ? choices[0] as Record<string, unknown>
+      : null;
+    const assistantMessage = firstChoice?.message && typeof firstChoice.message === 'object'
+      ? firstChoice.message as Record<string, unknown>
+      : null;
+    const content = assistantMessage?.content;
+    let message = '';
+    if (typeof content === 'string') {
+      message = content.trim();
+    } else if (Array.isArray(content) && content.every((part) =>
+      part && typeof part === 'object' && 'type' in part && part.type === 'text' && 'text' in part && typeof part.text === 'string'
+    )) {
+      message = content.map((part) => (part as { text: string }).text).join('').trim();
+    }
+    if (!message) {
+      console.error('OpenRouter returned an empty or unsupported response.', {
+        status: providerResponse.status,
+        selectedModel: primaryModel,
+        attempt: 1,
+        durationMs: Date.now() - openRouterStartedAt
+      });
+      return responseJson({ error: 'AI returned an empty response. Please try again.' }, 502);
+    }
 
     return responseJson({ message });
   } catch (error) {
-    console.error('Unable to reach OpenRouter.', error);
-    return responseJson({ error: 'AI provider unavailable' }, 502);
+    if (request.signal.aborted) return responseJson({ error: 'Request cancelled.' }, 499);
+    console.error('OpenRouter request attempts exhausted.', {
+      selectedModel: primaryModel,
+      error: sanitizeLogMessage(error instanceof Error ? error.message : 'Network request failed'),
+      durationMs: Date.now() - openRouterStartedAt
+    });
+    return responseJson({ error: 'AI service could not be reached. Please try again shortly.' }, 503);
   }
 });

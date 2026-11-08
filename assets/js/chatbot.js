@@ -375,7 +375,7 @@ const renderMessage = (message, messageIndex = -1) => {
     ${tableData ? renderTableView(tableData) : ''}
     ${attachments ? `<div class="teryzon-chatbot-attachment-row">${attachments}</div>` : ''}
     <small class="teryzon-chatbot-time">${message.time || timestamp()}</small>
-    ${message.error ? '<button class="teryzon-chatbot-quick" data-chat-retry type="button">Retry</button>' : ''}
+    ${message.error ? `<button class="teryzon-chatbot-quick" data-chat-retry="${Math.max(0, messageIndex - 1)}" type="button">Retry</button>` : ''}
   `;
   const actions = isUser ? `
     <div class="teryzon-chatbot-message-actions">
@@ -491,7 +491,6 @@ const boot = async () => {
   let sessions = getStoredSessions();
   let activeChatId = getActiveChatId() || sessions[0].id;
   let pending = false;
-  let lastFailed = null;
   let pendingUploads = [];
   let editingMessageIndex = null;
   let editingAttachments = [];
@@ -991,7 +990,6 @@ const boot = async () => {
       await revealReply(String(data.message), activeSession, requestId, requestAction);
       if (requestId !== activeRequestId) return;
       activeSession.updatedAt = Date.now();
-      lastFailed = null;
       if (hasDocumentContext && !data.message.toLowerCase().includes('document')) {
         console.info('Document context sent successfully to Teryzon AI.');
       }
@@ -1019,7 +1017,6 @@ const boot = async () => {
       } else {
         activeSession.messages.push(errorReply);
       }
-      lastFailed = userMessage.content;
     } finally {
       if (requestId !== activeRequestId) return;
       activeRequestController = null;
@@ -1203,7 +1200,14 @@ const boot = async () => {
   messages.addEventListener('click', (event) => {
     if (handleUserMessageAction(event)) return;
     if (event.target.matches('[data-chat-retry]')) {
-      request(lastFailed || '', pendingUploads);
+      const failedUserIndex = Number(event.target.dataset.chatRetry);
+      const failedUserMessage = getActiveSession()?.messages[failedUserIndex];
+      if (!Number.isInteger(failedUserIndex) || !failedUserMessage || failedUserMessage.role !== 'user') return;
+      request(
+        failedUserMessage.content === 'Shared attachment(s)' ? '' : failedUserMessage.content,
+        failedUserMessage.attachments || [],
+        { type: 'resend', messageIndex: failedUserIndex }
+      );
     }
   });
 

@@ -348,6 +348,42 @@ This project is currently being developed as a school environmental innovation p
 
 ---
 
+## Teryzon AI Edge Function
+
+The `teryzon-chat` Supabase Edge Function calls OpenRouter from the server; the
+OpenRouter API key must never be placed in browser code.
+
+Configure these Supabase Function secrets as needed:
+
+| Secret | Purpose |
+| --- | --- |
+| `OPENROUTER_API_KEY` | Required OpenRouter API key |
+| `OPENROUTER_MODEL` | Optional free primary text model; defaults to `openrouter/free` |
+| `OPENROUTER_FALLBACK_MODELS` | Optional comma-separated free text model IDs; defaults to `google/gemma-4-26b-a4b-it:free,google/gemma-4-31b-it:free` |
+| `OPENROUTER_VISION_MODEL` | Optional free vision model; defaults to `google/gemma-4-26b-a4b-it:free` |
+| `OPENROUTER_VISION_FALLBACK_MODELS` | Optional comma-separated free vision model IDs; defaults to `google/gemma-4-31b-it:free` |
+| `OPENROUTER_PROVIDER_ORDER` | Optional comma-separated OpenRouter provider slugs to prefer; OpenRouter provider fallbacks remain enabled |
+| `ALLOWED_ORIGIN` | Optional browser origin; defaults to `https://www.teryzon.com` |
+
+Use only model IDs that currently exist in OpenRouter and end in `:free` (except
+the `openrouter/free` router). Vision fallbacks must support image input. Free
+model availability and rate limits are controlled by OpenRouter and may change.
+
+The distributed chat rate limit uses the Supabase-provided `SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` runtime secrets. Apply the rate-limit migration
+before deploying the function:
+
+```powershell
+npx supabase db push --project-ref zeryppqymzbqesllxnvk
+npx supabase functions deploy teryzon-chat --project-ref zeryppqymzbqesllxnvk
+```
+
+When those Supabase runtime secrets are absent (for example, in local
+development), the function logs a warning and temporarily falls back to
+instance-local rate limiting.
+
+---
+
 <div align="center">
 
 # TERYZON
